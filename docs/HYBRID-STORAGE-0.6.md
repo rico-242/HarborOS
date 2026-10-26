@@ -26,6 +26,8 @@ Expansion requires a mounted, healthy pool, no running balance, stable new disk 
 
 Keep an independent backup and reliable power before expanding any pool. Snapshots on the pool are not an independent backup.
 
+Version 0.6.1 distinguishes an active storage task from an interrupted journal: recovery warnings appear only when no storage task is running.
+
 ## Interrupted-operation recovery
 
 A private `storage-operation.json` journal is written under the Harbour state directory before disk changes. It records the confirmed disks, identities, intended layout and newly created array UUIDs. An interrupted operation blocks further creation/expansion; Storage shows a recovery notice. Existing mounted data remains available where possible.

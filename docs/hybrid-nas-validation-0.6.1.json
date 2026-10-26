@@ -1,0 +1,10 @@
+{
+  "version": "0.6.1",
+  "hybrid_choices_available": true,
+  "existing_pool_expansion_mode": "native-raid1",
+  "existing_pool_expansion_ready": true,
+  "physical_pool_not_expanded_or_converted": true,
+  "signed_upgrade": true,
+  "owner_storage_network_preserved_by_upgrade": true,
+  "rebooted": false
+}

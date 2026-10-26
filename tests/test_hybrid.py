@@ -55,6 +55,16 @@ class ExpansionGuardTests(unittest.TestCase):
   p=self.plan()
   with self.assertRaisesRegex(Error,'expired'):self.manager.create({'token':p['token'],'confirmation':'ERASE Pool','acknowledge':True})
   self.assert_no_writes()
+ def test_active_storage_job_is_not_reported_as_interrupted(self):
+  self.manager.pending().write_text('{}')
+  self.app.jobs={'test':{'kind':'storage','state':'running'}}
+  self.assertFalse(self.manager.recovery_pending())
+  self.app.jobs['test']['state']='failed'
+  self.assertTrue(self.manager.recovery_pending())
+  self.app.jobs={}
+  self.assertTrue(self.manager.recovery_pending())
+  self.manager.pending().unlink()
+  self.assertFalse(self.manager.recovery_pending())
  def test_pending_recovery_blocks_planning(self):
   self.manager.pending().write_text('{}')
   with self.assertRaisesRegex(Error,'recovery'):self.plan()

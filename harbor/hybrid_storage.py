@@ -30,6 +30,11 @@ class HybridStorage:
   return {'name':HYBRID_LEVELS[config['level']]['name'],'arrays':arrays,'healthy':bool(arrays) and all(a['healthy'] for a in arrays)}
  def pending(self):
   return self.app.state/'storage-operation.json'
+ def recovery_pending(self):
+  if not self.pending().exists():return False
+  with self.app.lock:
+   active=any(job.get('kind')=='storage' and job.get('state') in ('queued','running') for job in getattr(self.app,'jobs',{}).values())
+  return not active
  def record(self,value):
   atomic_text(self.pending(),json.dumps(value,indent=2)+'\n')
  def check_pending(self):

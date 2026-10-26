@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.6.0'
+VERSION = '0.6.1'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -258,7 +258,7 @@ class Harbor:
             info.update(redundancy=hybrid['name'],healthy=bool(info['mounted']) and hybrid['healthy'],hybrid_arrays=hybrid['arrays'])
             syncing=[a for a in hybrid['arrays'] if a.get('sync_action','idle')!='idle']
             if syncing:info.update(sync_action='Synchronizing protected tiers',sync_completed='; '.join(a['path']+': '+a.get('sync_completed','') for a in syncing))
-        info['storage_operation_pending']=self.storage_manager.pending().exists()
+        info['storage_operation_pending']=self.storage_manager.recovery_pending()
         info['name']=self.config.get('storage',{}).get('name','Data volume')
         if info['mounted'] and self.config.get('storage',{}).get('level')=='linear':
             info['redundancy']='JBOD (Btrfs single)'
