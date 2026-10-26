@@ -19,7 +19,7 @@ On an amd64 Debian/Ubuntu builder install `debootstrap rsync squashfs-tools grub
 ```sh
 sudo env HARBOR_ISO_WORK=/absolute/new/harbour-build HARBOR_ARTIFACTS="$PWD/dist" bash tools/build-release-iso.sh
 sudo python3 tools/test-release-iso.py dist/harbour-0.5.0-amd64.iso --output dist/iso-validation.json
-sha256sum -c dist/harbour-0.5.0-amd64.iso.sha256
+(cd dist && sha256sum -c harbour-0.5.0-amd64.iso.sha256)
 ```
 
 The build directory must be new. Scripts install packages inside the isolated root and temporarily mount pseudo-filesystems there. They do not partition physical disks. A hosted runner or disposable Linux builder is recommended. Debian packages are fetched from signed repositories at build time, so repeated builds need not have identical bytes.
