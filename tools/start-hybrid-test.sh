@@ -11,7 +11,7 @@ for i in $(seq 1 10); do
  if ! test -f "$root/data$i.qcow2"; then qemu-img create -f qcow2 "$root/data$i.qcow2" "$size"; fi
  args+=(-drive "file=$root/data$i.qcow2,if=none,id=h$i,format=qcow2" -device "virtio-blk-pci,id=devh$i,drive=h$i,serial=HARBOUR_HYBRID_$i")
 done
-qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -m 4096 -smp 2 -display none \
+qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -m 6144 -smp 2 -display none \
  -drive file="$root/system.qcow2",if=none,id=system,format=qcow2 -device virtio-blk-pci,drive=system,serial=HARBOUR_HYBRID_SYSTEM \
  "${args[@]}" -netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
  -device virtio-serial-pci -chardev socket,path="$root/agent.sock",server=on,wait=off,id=agent0 -device virtserialport,chardev=agent0,name=org.qemu.guest_agent.0 \

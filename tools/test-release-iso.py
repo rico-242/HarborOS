@@ -15,7 +15,7 @@ assert health['live'] and health['setup_required'] and installer['phase']=='read
 assert not Path('/var/lib/harbor/admin.json').exists()
 assert not Path('/var/lib/harbor/release-updates/github-credential.json').exists()
 assert subprocess.check_output(['systemctl','is-active','lightdm','harbor','harbor-installer'],text=True).split()==['active']*3
-for asset in ('theme.js','experience.css','experience.js','wallpaper.svg','catalog/icons/featured-blinko.png'):
+for asset in ('clarity.css','recovery.js','theme.js','experience.css','experience.js','wallpaper.svg','catalog/icons/featured-blinko.png'):
  assert urllib.request.urlopen('http://127.0.0.1:17080/'+asset).status==200,asset
 for asset in ('','install.js','theme.js','experience.css'):
  assert urllib.request.urlopen('http://127.0.0.1:17081/'+asset).status==200,asset
@@ -25,7 +25,7 @@ sys.path.insert(0,'/opt/harbor')
 from hybrid_layout import HYBRID_LEVELS
 from drive_lifecycle import DriveLifecycle
 assert set(HYBRID_LEVELS)=={'hybrid1','hybrid2'}
-assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs'))
+assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs','xorriso','grub-reboot','grub-editenv'))
 print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists()}))
 '''
 script='VERSION='+repr(version)+'\nKEY='+repr(__import__('hashlib').sha256((root/'os/release-public.pem').read_bytes()).hexdigest())+'\n'+script

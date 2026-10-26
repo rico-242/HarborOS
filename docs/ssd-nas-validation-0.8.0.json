@@ -1,0 +1,12 @@
+{
+  "version": "0.8.0",
+  "signed_update_installed": true,
+  "owner_account_preserved": true,
+  "network_configuration_preserved": true,
+  "physical_pool_source_preserved": true,
+  "two_pool_members_healthy": true,
+  "system_ssd_writable_without_pool_namespace": true,
+  "recovery_tools_available": true,
+  "physical_nas_not_rebooted_or_reinstalled": true,
+  "virtual_recovery_install_completed": true
+}

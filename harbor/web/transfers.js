@@ -6,6 +6,7 @@ async function transferFiles(files,destination){
  if(!files.length)return;
  if(files.some(file=>file.size>1024**3))throw new Error('Use SMB to transfer files larger than 1 GB.');
  uploadBusy=true;
+ const volumeQuery=fileVolumeQuery();
  const total=files.reduce((n,file)=>n+file.size,0),started=performance.now();let completed=0,count=0;
  let panel=document.getElementById('upload-progress');
  if(!panel){panel=document.createElement('section');panel.id='upload-progress';panel.className='upload-progress';panel.setAttribute('aria-label','File import progress');document.body.append(panel);}
@@ -20,7 +21,7 @@ async function transferFiles(files,destination){
    render(file,0);
    await new Promise((resolve,reject)=>{
     const request=uploadRequest=new XMLHttpRequest();
-    request.open('POST','/api/upload?path='+encodeURIComponent(destination)+'&name='+encodeURIComponent(file.name));
+    request.open('POST','/api/upload?path='+encodeURIComponent(destination)+'&name='+encodeURIComponent(file.name)+volumeQuery);
     request.setRequestHeader('X-Harbor-CSRF',csrf);request.setRequestHeader('Content-Type','application/octet-stream');
     request.upload.onprogress=event=>render(file,event.loaded,event.loaded>=file.size);
     request.upload.onload=()=>render(file,file.size,true);

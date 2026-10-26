@@ -1,0 +1,16 @@
+{
+  "signed_manifest_and_image_verified": true,
+  "preparation_did_not_reboot_or_erase": true,
+  "one_time_grub_boot": true,
+  "ram_recovery_boot_without_attached_iso_or_usb": true,
+  "virtual_system_disk_released": true,
+  "fresh_virtual_system_installed": true,
+  "fresh_os_booted_with_no_owner": true,
+  "separate_data_pool_hash_preserved": true,
+  "native_ssd_browser_folder_and_upload": true,
+  "ssd_uploaded_bytes_verified": true,
+  "owner_only_ssd_api_verified": true,
+  "os_free_space_reserve_verified": true,
+  "service_sandbox_recovery_stage_and_boot_verified": true,
+  "prototype_recovery_image": "0.7.0"
+}

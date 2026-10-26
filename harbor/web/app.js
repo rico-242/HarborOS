@@ -72,6 +72,7 @@ document.querySelectorAll('.desktop-dock [data-route]').forEach(el=>{el.querySel
 setInterval(tickClock,1000);
 
 async function api(path, data, options={}) {
+  if(typeof fileVolume!=='undefined'&&fileVolume==='system'&&/^\/api\/(files|folders|file-action|trash|trash-restore|preview)(?:\?|$)/.test(path))path+=(path.includes('?')?'&':'?')+'volume=system';
   const init = {...options, credentials:'same-origin', headers:{...options.headers}};
   if (data !== undefined) {init.method='POST'; init.headers['Content-Type']='application/json'; init.body=JSON.stringify(data);}
   if (init.method === 'POST') init.headers['X-Harbor-CSRF']=csrf;
@@ -90,7 +91,7 @@ function empty(title, description, action='', compact=false) {return `<div class
 function button(label, action, extra='', type='primary') {const ownerOnly=['new-share','storage-wizard','snapshot','choose-snapshot','restore','smart','member-add'].includes(action);return `<button class="button ${type} ${ownerOnly?'owner-only':''}" data-action="${E(action)}" ${extra}>${E(label)}</button>`;}
 function eventsHTML(events) {return events.map(event=>`<div class="event"><span class="event-symbol">${event.level==='error'?'!':'↗'}</span><div><p>${E(event.message)}</p><small>${E(ago(event.time))}</small></div></div>`).join('');}
 function metric(label, value, detail, percent, cls='') {return `<section class="card ${cls}"><div class="card-label"><span>${E(label)}</span><span aria-hidden="true">↗</span></div><div class="metric-value">${value}</div><progress max="100" value="${Math.min(100,Math.max(0,percent||0))}" aria-label="${E(label)}"></progress><div class="metric-foot">${detail}</div></section>`;}
-function showAuth() {if(typeof resetTransfers==='function')resetTransfers();if(typeof resetProcesses==='function')resetProcesses();clearTimeout(refreshTimer); viewSerial++; csrf=''; $('#shell').hidden=true; $('#modal').close();if(setupRequired){welcomeScreen();return;}$('#onboarding').hidden=true;$('#auth').hidden=false;}
+function showAuth() {fileVolume='pool';filePath='';fileClipboard=null;fileItems=[];fileNavStack=[];fileNavIndex=-1;if(typeof resetTransfers==='function')resetTransfers();if(typeof resetProcesses==='function')resetProcesses();clearTimeout(refreshTimer); viewSerial++; csrf=''; $('#shell').hidden=true; $('#modal').close();if(setupRequired){welcomeScreen();return;}$('#onboarding').hidden=true;$('#auth').hidden=false;}
 function signedIn(session) {$('#onboarding').hidden=true;csrf=session.csrf;username=session.username;sessionRole=session.role||'owner';$('#auth').hidden=true;$('#shell').hidden=false;$('#account-avatar').textContent=username.slice(0,1).toUpperCase();$('#account-name').textContent=username;$('#account-role').textContent=sessionRole==='owner'?'Server owner':'Member';if(typeof loadProcesses==='function')loadProcesses();$('#preview-label').hidden=!(health.demo||health.live);$('#preview-label').textContent=health.live?'LIVE SESSION':'PREVIEW';$('#sidebar-version').textContent=health.version;$('#footer-version').textContent=health.version;$('#auth-form').reset();navigate(labels[location.hash.slice(1)]?location.hash.slice(1):'home');}
 async function navigate(next) {
   clearTimeout(refreshTimer); route=next; location.hash=next;

@@ -20,9 +20,9 @@ Object.assign(glyphs,{
 });
 let fileNavStack=[],fileNavIndex=-1,fileNavReplaying=false,storeFeaturedOffset=0;
 function rememberFileLocation(area,path){
-  const entry={area,path:area==='trash'?'':path},current=fileNavStack[fileNavIndex];
+  const entry={area,volume:fileVolume,path:area==='trash'?'':path},current=fileNavStack[fileNavIndex];
   if(fileNavReplaying){fileNavReplaying=false;return;}
-  if(current&&current.area===entry.area&&current.path===entry.path)return;
+  if(current&&current.volume===entry.volume&&current.area===entry.area&&current.path===entry.path)return;
   fileNavStack=fileNavStack.slice(0,fileNavIndex+1);fileNavStack.push(entry);
   if(fileNavStack.length>80)fileNavStack.shift();fileNavIndex=fileNavStack.length-1;
 }
@@ -49,8 +49,8 @@ async function experienceAction(target){
   if(action==='power-menu')dialog('Power',`<div class="power-menu-options"><button type="button" data-action="system-power" data-operation="reboot" data-name="${E(target.dataset.name)}">${icon('refresh')} Restart</button><button type="button" data-action="system-power" data-operation="poweroff" data-name="${E(target.dataset.name)}">${icon('power')} Shut down</button></div>`,'Done',async()=>{});
   if(action==='store-featured-next'||action==='store-featured-previous'){storeFeaturedOffset+=action.endsWith('next')?1:-1;const template=document.createElement('template');template.innerHTML=await storeView();const featured=template.content.querySelector('.store-featured');featured.classList.add('featured-enter');$('.store-featured').replaceWith(featured);featured.querySelector('[data-action='+action+']')?.focus({preventScroll:true});}
   if(action==='store-installed'){storeStatus=storeStatus==='Installed'?'All':'Installed';await navigate('apps');}
-  if(action==='fm-history'){const next=fileNavIndex+Number(target.dataset.direction);if(next<0||next>=fileNavStack.length)return;fileNavIndex=next;const state=fileNavStack[next];fileArea=state.area;filePath=state.path;fileSearch='';fileNavReplaying=true;await navigate('files');}
-  if(action==='fm-location'){fileArea='shares';filePath=target.dataset.path;fileSearch='';await navigate('files');}
+  if(action==='fm-history'){const next=fileNavIndex+Number(target.dataset.direction);if(next<0||next>=fileNavStack.length)return;fileNavIndex=next;const state=fileNavStack[next];fileVolume=state.volume||'pool';fileArea=state.area;filePath=state.path;fileSearch='';fileNavReplaying=true;await navigate('files');}
+  if(action==='fm-location'){fileVolume='pool';fileClipboard=null;fileArea='shares';filePath=target.dataset.path;fileSearch='';await navigate('files');}
   if(action==='fm-favorite'){const path=target.dataset.path,shares=await api('/api/shares'),favorites=readFileFavorites(shares),index=favorites.indexOf(path);if(index<0)favorites.push(path);else favorites.splice(index,1);localStorage.setItem(fileFavoriteKey(),JSON.stringify(favorites.slice(0,20)));await navigate('files');}
   if(action==='fm-select-all'){fileSelection=new Set([...document.querySelectorAll('.file-entry:not([hidden])')].map(row=>row.dataset.fmPath));updateSelection();}
   if(action==='fm-more'){const menu=$('#file-context'),rect=target.getBoundingClientRect();menu.innerHTML='<button role="menuitem" data-action="fm-select-all">Select all</button><button role="menuitem" data-action="fm-refresh">Refresh</button>'+(sessionRole==='owner'&&!filePath?'<button role="menuitem" data-action="new-share">New shared folder</button>':'');menu.style.left=Math.min(rect.left,innerWidth-210)+'px';menu.style.top=rect.bottom+6+'px';menu.hidden=false;}

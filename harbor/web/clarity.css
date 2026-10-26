@@ -1,0 +1,21 @@
+/* Native text metrics and higher contrast retain detail at normal browser zoom. */
+:root{font-family:"Segoe UI",Inter,system-ui,sans-serif;font-synthesis:none;--ui-muted:#b6bdc8;--ui-faint:#969fae}
+:root[data-theme=light]{--ui-muted:#535d6a;--ui-faint:#657181}
+body{-webkit-font-smoothing:auto;text-rendering:optimizeLegibility}
+button,input,select,textarea{font-family:inherit}
+svg{shape-rendering:geometricPrecision}
+.button,.settings-tab,.file-location,.launcher-name{font-size:13px;font-weight:500}
+.topbar .top-icon svg,.tool-icon svg{stroke-width:1.8}
+.file-entry-name{font-size:14px;line-height:1.4;font-weight:500}
+.file-entry-modified,.file-entry-size,.files-status,.file-sidebar-card h2{font-size:12px}
+.store-app-details strong{font-size:14px;font-weight:500}
+.store-app-details>span>span{font-size:12px;line-height:1.5;color:var(--muted)}
+.widget-title,.storage-widget-caption,.window-chrome #window-caption{font-size:13px;font-weight:500}
+.detail,.preferences-card .pref-row{font-size:13px}
+.table-wrap th{font-size:11px;letter-spacing:.04em;color:var(--muted)}
+.table-wrap td{font-size:13px}
+.small,small{color:var(--muted)}
+.file-type-icon img,.launcher-icon img{image-rendering:auto}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.system-volume-note{padding:10px 20px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);background:var(--ui-panel);line-height:1.5}

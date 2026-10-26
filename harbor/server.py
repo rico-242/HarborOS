@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.7.0'
+VERSION = '0.8.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -129,6 +129,8 @@ class Harbor:
         self.jobs = {}
         self.job_context=threading.local()
         self.pool = ThreadPoolExecutor(max_workers=2)
+        from systemfiles import SystemFiles
+        self.system_files=SystemFiles(self,self.state/'system-files' if demo else Path('/srv/harbor/system-data'),contained_path,APIError,atomic_json)
         self.config_path = self.state / 'config.json'
         self.config = json.loads(self.config_path.read_text()) if self.config_path.exists() else {'shares': [], 'apps': []}
         self.admin_path = self.state / 'admin.json'
@@ -146,6 +148,8 @@ class Harbor:
         self.system_settings=SystemSettings(self,run,APIError,atomic_json)
         self.networking=Networking(self,run,APIError,atomic_json)
         self.releases=Releases(self,run,APIError,atomic_json,VERSION)
+        from recovery import Recovery
+        self.recovery=Recovery(self,run,APIError,VERSION)
         self.archive_slots=threading.BoundedSemaphore(2)
         if self.demo:
             (self.storage / 'shares').mkdir(exist_ok=True)
@@ -509,8 +513,8 @@ class Harbor:
                 prior[-1]['detail']=detail
             else:prior=(prior+[step])[-30:]
             value['steps']=prior
-            count=re.search(r'(\d+)\s*/\s*(\d+)',detail) if value.get('kind')=='storage' else None
-            percent=re.search(r'(\d+(?:\.\d+)?)%',detail) if value.get('kind')=='storage' else None
+            count=re.search(r'(\d+)\s*/\s*(\d+)',detail) if value.get('kind') in ('storage','recovery') else None
+            percent=re.search(r'(\d+(?:\.\d+)?)%',detail) if value.get('kind') in ('storage','recovery') else None
             value['progress']=min(100,100*int(count[1])/int(count[2])) if count and int(count[2]) else min(100,float(percent[1])) if percent else None
 
     def app_list(self):
@@ -676,7 +680,17 @@ class Handler(BaseHTTPRequestHandler):
 
     @property
     def app(self):
-        return self.server.app
+        return getattr(self,'_file_app',None) or self.server.app
+
+    def file_volume(self,route,query,session):
+        volume=query.get('volume',['pool'])[0]
+        if volume not in ('pool','system'):raise APIError('Unknown file volume.')
+        if volume=='system':
+            if session['role']!='owner':raise APIError('System SSD files are available only to the owner.',403)
+            allowed={'/api/files','/api/upload','/api/folders','/api/file-action','/api/trash','/api/trash-restore','/api/download','/api/archive','/api/image','/api/preview'}
+            if route not in allowed:raise APIError('This endpoint does not support a system-file namespace.')
+            self._file_app=self.server.app.system_files
+
 
     def setup(self):
         super().setup()
@@ -766,6 +780,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'error': 'The server could not complete the request. Check the system journal.'}, 500)
 
     def get(self):
+        self._file_app=None
         self.console_host()
         url = urlsplit(self.path)
         route, query = url.path, parse_qs(url.query)
@@ -788,6 +803,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply({'username': session['username'], 'role':session['role'],'csrf': session['csrf']})
             if session['role']!='owner' and route not in ('/api/summary','/api/files','/api/shares','/api/download','/api/archive','/api/preview','/api/image','/api/apps','/api/catalog','/api/trash','/api/jobs'):
                 raise APIError('This feature is available to the server owner.',403)
+            self.file_volume(route,query,session)
+            if route == '/api/recovery':return self.reply(self.app.recovery.info())
+            if route == '/api/system-files':return self.reply(self.app.system_files.info())
             if route == '/api/members':return self.reply(self.app.members.public())
             if route == '/api/system':return self.reply(self.app.system_settings.info())
             if route == '/api/network':return self.reply(self.app.networking.info())
@@ -887,6 +905,8 @@ class Handler(BaseHTTPRequestHandler):
         static = {'/': 'index.html', '/app.js': 'app.js', '/onboarding.js':'onboarding.js','/desktop.js':'desktop.js','/desktop.css':'desktop.css','/features.js':'features.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg'}
         static['/transfers.js']='transfers.js'
         static['/drives.js']='drives.js'
+        static['/clarity.css']='clarity.css'
+        static['/recovery.js']='recovery.js'
         static.update({'/process.js':'process.js','/widgets.js':'widgets.js','/refinements.css':'refinements.css'})
         static.update({'/maintenance.js':'maintenance.js','/maintenance.css':'maintenance.css','/theme.js':'theme.js','/experience.js':'experience.js','/experience.css':'experience.css','/wallpaper.svg':'wallpaper.svg'})
         if route.startswith('/catalog/icons/'):
@@ -922,6 +942,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({'error': 'The server could not complete the request. Check the system journal.'}, 500)
 
     def post(self):
+        self._file_app=None
         self.console_host()
         url = urlsplit(self.path)
         route, query = url.path, parse_qs(url.query)
@@ -946,6 +967,7 @@ class Handler(BaseHTTPRequestHandler):
         token, session = self.session(mutation=True)
         if session['role']!='owner' and route not in ('/api/logout','/api/upload','/api/folders','/api/file-action','/api/trash-restore'):
             raise APIError('This feature is available to the server owner.',403)
+        self.file_volume(route,query,session)
         if route=='/api/os-updates/upload':
             if self.headers.get('Transfer-Encoding') or self.headers.get_content_type()!='application/octet-stream':raise APIError('Send a signed update bundle as a binary upload.')
             try:length=int(self.headers.get('Content-Length','-1'))
@@ -967,6 +989,7 @@ class Handler(BaseHTTPRequestHandler):
             try:length=int(self.headers.get('Content-Length','-1'))
             except ValueError:raise APIError('Invalid content length.')
             if not 0<=length<=MAX_UPLOAD:raise APIError('Upload a file under 1 GB, or use SMB.',413)
+            if hasattr(self.app,'check_upload_space'):self.app.check_upload_space(length)
             temporary=directory/('.harbour-upload-'+secrets.token_hex(16))
             try:
                 with temporary.open('xb') as stream:
@@ -1037,6 +1060,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(self.app.app_plan(data.get('id',''),data.get('options')))
         if route == '/api/storage/member-resume':
             return self.reply(self.app.storage_manager.lifecycle_resume(data),202)
+        if route == '/api/recovery/prepare':return self.reply(self.app.recovery.prepare(),202)
+        if route == '/api/recovery/boot':return self.reply(self.app.recovery.boot(data),202)
         if route == '/api/storage/checkpoint':
             return self.reply(self.app.storage_manager.lifecycle_checkpoint())
         if route == '/api/storage/member-plan':

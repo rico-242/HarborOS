@@ -90,6 +90,33 @@ class ServiceTests(unittest.TestCase):
         self.csrf = result['csrf']
         return result
 
+    def test_system_ssd_namespace_without_a_data_pool(self):
+        self.setup_admin()
+        self.app.storage_info=lambda:{'mounted':False}
+        self.assertEqual(self.request('/api/system-files')[0],200)
+        status,result,_=self.request('/api/upload?volume=system&path=Files&name=ssd.txt',b'local SSD data',raw=True)
+        self.assertEqual(status,201,result)
+        self.assertEqual(self.request('/api/download?volume=system&path=Files/ssd.txt')[1],b'local SSD data')
+        self.assertFalse((self.app.storage/'shares/Files/ssd.txt').exists())
+        self.assertEqual(self.request('/api/files?volume=system&path=../../etc')[0],403)
+        self.assertEqual(self.request('/api/files?path=Files')[0],403)
+        self.assertEqual(self.request('/api/summary?volume=system')[0],400)
+
+    def test_members_cannot_access_system_ssd_namespace(self):
+        self.setup_admin();token='f'*64;self.app.sessions[token]={'username':'member','role':'member','csrf':'member-csrf','expires':time.monotonic()+600}
+        self.cookie='harbor='+token;self.csrf='member-csrf'
+        self.assertEqual(self.request('/api/system-files')[0],403)
+        self.assertEqual(self.request('/api/files?volume=system&path=Files')[0],403)
+        self.assertEqual(self.request('/api/upload?volume=system&path=Files&name=blocked.txt',b'blocked',raw=True)[0],403)
+
+    def test_system_ssd_reserves_os_space(self):
+        self.setup_admin();self.app.system_files.prepare()
+        original=self.app.system_files.info
+        self.app.system_files.info=lambda:dict(original(),available=1)
+        status,result,_=self.request('/api/upload?volume=system&path=Files&name=full.txt',b'too large',raw=True)
+        self.assertEqual(status,409,result)
+        self.assertFalse((self.app.system_files.storage/'shares/Files/full.txt').exists())
+
     def test_setup_auth_and_logout(self):
         self.assertEqual(self.request('/api/summary')[0], 401)
         self.setup_admin()
