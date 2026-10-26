@@ -1,0 +1,11 @@
+{
+  "version": "0.5.2",
+  "real_docker_uninstall": true,
+  "containers_removed": true,
+  "bind_data_preserved": true,
+  "named_volume_data_preserved": true,
+  "images_preserved": true,
+  "previous_config_retained": true,
+  "app_marked_available": true,
+  "user_apps_unmodified": true
+}

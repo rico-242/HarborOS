@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.5.1'
+VERSION = '0.5.2'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -529,10 +529,12 @@ class Harbor:
 
     def app_action(self, ident, action, options=None):
         if ident in OFFICIAL:
-            if action not in ('install','start','stop'):
+            if action not in ('install','start','stop','uninstall'):
                 raise APIError('Unknown application action.')
             if self.demo or os.getenv('HARBOR_LIVE') == '1':
                 raise APIError('Install Harbor on a disk before installing applications.',409)
+            if action=='uninstall' and (not isinstance(options,dict) or options.get('confirmation')!='UNINSTALL '+ident):
+                raise APIError('Type UNINSTALL '+ident+' to confirm. Application data will be kept.',409)
             plan=self.app_plan(ident,options) if action=='install' else None
             if plan and plan['warnings'] and not (options or {}).get('approve_access'):
                 raise APIError('Review and approve the application access requirements.',409)
@@ -543,8 +545,17 @@ class Harbor:
                     if action=='install':
                         raise APIError('This application is already installed.',409)
                     self.job_progress('Starting application' if action=='start' else 'Stopping application', 'Updating the application containers.')
-                    run('docker',action,'harbor-'+ident,timeout=90)
-                    return {'app':ident,'action':action}
+                    if action=='uninstall':
+                        self.job_progress('Removing application', 'Stopping and removing the app container. Application data is kept.')
+                        run('docker','rm','--force','harbor-'+ident,timeout=90)
+                        previous=self.state/'compose'/ident/'compose.json'
+                        if previous.exists():previous.replace(previous.with_name('compose.uninstalled.json'))
+                        with self.lock:
+                            self.config['apps']=[value for value in self.config['apps'] if value!=ident]
+                            self.save()
+                    else:
+                        run('docker',action,'harbor-'+ident,timeout=90)
+                    return {'app':ident,'action':action,'data_preserved':action=='uninstall'}
                 folder=self.state/'compose'/ident
                 config=folder/'compose.json'
                 command=['docker-compose'] if shutil.which('docker-compose') else ['docker','compose']
@@ -581,12 +592,22 @@ class Harbor:
                         if ident not in self.config['apps']:
                             self.config['apps'].append(ident)
                             self.save()
+                elif action=='uninstall':
+                    if not config.exists():
+                        raise APIError('This application has not been installed.',409)
+                    self.job_progress('Removing application', 'Stopping and removing app containers and their network. Files, volumes and images are kept.')
+                    run(*command,'down',timeout=180)
+                    self.job_progress('Keeping application data', 'Retaining app files, named volumes and the previous container configuration for reinstallation.')
+                    config.replace(folder/'compose.uninstalled.json')
+                    with self.lock:
+                        self.config['apps']=[value for value in self.config['apps'] if value!=ident]
+                        self.save()
                 else:
                     if not config.exists():
                         raise APIError('This application has not been installed.',409)
                     self.job_progress('Starting containers' if action=='start' else 'Stopping containers', 'Applying the requested application state.')
                     run(*command,*(('up','-d') if action=='start' else ('stop',)),timeout=180)
-                return {'app':ident,'action':action}
+                return {'app':ident,'action':action,'data_preserved':action=='uninstall'}
             return self.job(f'{action.title()} {OFFICIAL[ident]["name"]}',execute_compose,kind='app',target=ident)
         if ident not in CATALOG or action not in ('install', 'start', 'stop'):
             raise APIError('Unknown application or action.')

@@ -79,7 +79,7 @@ async function settingsView(){
   let body='';
   if(settingsTab==='storage'){body=await storageView();}
   if(settingsTab==='users'){body=await membersView();}
-  if(settingsTab==='apps'){const apps=(await api('/api/apps')).filter(a=>a.installed);body=`<h1>Apps</h1><p>Manage the applications installed on your Harbour.</p>${apps.length?apps.map(a=>`<div class="detail"><span>${E(a.name)}</span><span class="pill">${E(a.state)}</span></div>`).join(''):'<p>No applications installed yet.</p>'}<button class="button primary" data-route="apps">Open App Store</button>`;}
+  if(settingsTab==='apps'){const apps=(await api('/api/apps')).filter(a=>a.installed);body=`<h1>Apps</h1><p>Manage the applications installed on your Harbour.</p>${apps.length?apps.map(a=>`<div class="detail"><span>${E(a.name)}</span><span class="pill">${E(a.state)}</span><span class="actions">${button(a.state==='running'?'Stop':'Start','app',`data-id="${E(a.id)}" data-operation="${a.state==='running'?'stop':'start'}"`,'button secondary')}${button('Uninstall','app',`data-id="${E(a.id)}" type="button" data-operation="uninstall"`,'button secondary')}</span></div>`).join(''):'<p>No applications installed yet.</p>'}<button class="button primary" data-route="apps">Open App Store</button>`;}
   if(settingsTab==='general')body=generalSettingsView(data);
   if(settingsTab==='network')body=await networkSettingsView(data);
   if(settingsTab==='appearance')body=appearanceSettingsView();
