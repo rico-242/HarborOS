@@ -2,7 +2,7 @@
 
 A small home NAS distribution with its own web interface, built on Debian 13. Inspired by the simplicity of ZimaOS and the storage-focused experience of TrueNAS. This is an independent implementation, not a TrueNAS fork.
 
-Version: **0.5.0, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The last baseline ISO is `dist/harbour-0.3.1-amd64.iso`; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.5.0-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
+Version: **0.5.0, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The current live installer ISO is `harbour-0.5.0-amd64.iso`, available with its SHA-256 checksum on GitHub Releases; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.5.0-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
 
 ## What works
 
@@ -56,6 +56,8 @@ The SSH helper uses Paramiko from tools/requirements.txt. Supply HARBOR_SSH_PASS
 Use a Linux Docker host. Build os/Dockerfile.builder, then run os/build-rootfs.sh in a privileged builder container with the source at /source and a dedicated output directory at /target. The builder needs privileged mounts and must run only on a trusted development host.
 
 The historical os/build-image.sh recipe writes a sparse GPT bootstrap image with BIOS boot, EFI and ext4 partitions. Use the current ISO workflow below for the graphical release. New installations generate fresh SSH/TLS identities and create the first owner graphically.
+
+Every push to `main` builds and boot-tests an ISO in GitHub Actions; version tags and published releases attach the tested ISO and checksum to GitHub Releases. See [ISO builds and downloads](docs/ISO-BUILDS.md).
 
 The current live-ISO workflow uses os/prepare-live-root.sh, tools/prepare-graphical-root.sh, os/configure-graphical.sh and os/build-iso.sh. It uses a separate filesystem under /DATA/harbor/iso-build, bootstrapped from a clean Debian root, installs Debian live-boot and graphical tools, bundles the current Harbour source, and creates a BIOS/UEFI hybrid ISO with grub-mkrescue. It does not include the NAS's administrator state, host keys, or TLS key. See docs/RELEASE-0.3.md for validation. Older raw-image recipes remain historical bootstrap tools.
 

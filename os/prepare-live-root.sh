@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-work=/DATA/harbor/iso-build
+work=${HARBOR_ISO_WORK:-/DATA/harbor/iso-build}
 target=$work/root
 image=/DATA/harbor/release/artifacts/harbor-0.1.0-amd64.img
 mkdir -p "$work"

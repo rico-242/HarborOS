@@ -1,0 +1,82 @@
+name: Build and publish ISO
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Attach the ISO to the existing release for this version
+        type: boolean
+        default: true
+
+concurrency:
+  group: iso-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  iso:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+      - name: Read and validate version
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version=$(python3 tools/release-version.py)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          tag="$RELEASE_TAG"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then tag="$GITHUB_REF_NAME"; fi
+          if [[ -n "$tag" && "$tag" != "v$version" ]]; then
+            echo "Tag and source version do not match" >&2; exit 1
+          fi
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap rsync squashfs-tools grub-pc-bin grub-efi-amd64-bin grub2-common xorriso mtools dosfstools qemu-system-x86 ovmf
+      - name: Build clean Debian live installer
+        run: |
+          sudo env HARBOR_ISO_WORK="$RUNNER_TEMP/harbour-iso" HARBOR_ARTIFACTS="$GITHUB_WORKSPACE/dist" bash tools/build-release-iso.sh
+      - name: Boot test BIOS and UEFI
+        run: |
+          sudo python3 tools/test-release-iso.py "dist/harbour-${{ steps.version.outputs.version }}-amd64.iso" --output dist/iso-validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harbour-${{ steps.version.outputs.version }}-amd64-iso
+          path: |
+            dist/*.iso
+            dist/*.iso.sha256
+            dist/iso-validation.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Attach tested ISO to GitHub release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if ! gh release view "v$VERSION" >/dev/null 2>&1; then
+            if [[ "$GITHUB_REF" != refs/tags/* ]]; then echo 'Publish the version release first.' >&2; exit 1; fi
+            gh release create "v$VERSION" --verify-tag --title "Harbour OS $VERSION (experimental)" --prerelease --generate-notes
+          fi
+          # Repeated tag/release events retain an already complete ISO asset set.
+          existing=$(gh release view "v$VERSION" --json assets --jq '.assets[].name')
+          complete=true
+          for name in "harbour-$VERSION-amd64.iso" "harbour-$VERSION-amd64.iso.sha256" iso-validation.json; do
+            if ! grep -Fxq "$name" <<< "$existing"; then complete=false; fi
+          done
+          if $complete; then echo 'Tested ISO already published; keeping existing assets.'; exit 0; fi
+          # No --clobber: an existing published ISO is immutable.
+          gh release upload "v$VERSION" "dist/harbour-$VERSION-amd64.iso" "dist/harbour-$VERSION-amd64.iso.sha256" dist/iso-validation.json

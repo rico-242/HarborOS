@@ -16,7 +16,7 @@ def source_filter(member):
 
 
 with tarfile.open(root / ('dist/harbour-'+release+'-source.tar.gz'), 'w:gz') as archive:
-    for name in ('.gitignore','.gitattributes', 'LICENSE', 'README.md', 'harbor', 'os', 'tools', 'tests', 'docs'):
+    for name in ('.github','.gitignore','.gitattributes', 'LICENSE', 'README.md', 'harbor', 'os', 'tools', 'tests', 'docs'):
         archive.add(root / name, arcname=name, filter=source_filter)
     for name in ('harbour-'+release+'-amd64.iso.sha256','harbour-'+release+'-amd64.harbour-update.sha256'):
         if (root/'dist'/name).is_file():archive.add(root / 'dist' / name, arcname='dist/' + name)

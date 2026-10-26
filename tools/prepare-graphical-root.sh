@@ -1,6 +1,7 @@
 set -eu
-target=/DATA/harbor/iso-build/root
-test -f /DATA/harbor/iso-build/root-ready
+work=${HARBOR_ISO_WORK:-/DATA/harbor/iso-build}
+target=$work/root
+test -f "$work/root-ready"
 test ! -f "$target/var/lib/harbor/admin.json"
 for name in dev proc sys; do
   if ! mountpoint -q "$target/$name"; then

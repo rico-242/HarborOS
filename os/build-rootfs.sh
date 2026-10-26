@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-TARGET=/target
+TARGET=${HARBOR_TARGET:-/target}
+SOURCE=${HARBOR_SOURCE:-/source}
 if [ ! -f "$TARGET/etc/debian_version" ]; then
   debootstrap --variant=minbase --include=ca-certificates trixie "$TARGET" https://deb.debian.org/debian
 fi
@@ -25,23 +26,23 @@ deb https://security.debian.org/debian-security trixie-security main contrib non
 EOF
 chroot "$TARGET" apt-get update
 chroot "$TARGET" apt-get install -y --no-install-recommends linux-image-amd64 systemd-sysv systemd-timesyncd systemd-resolved dbus udev initramfs-tools busybox python3 openssh-server sudo ca-certificates curl openssl iproute2 iputils-ping ethtool pciutils usbutils btrfs-progs mdadm smartmontools samba smbclient docker.io docker-cli avahi-daemon libnss-mdns locales kmod less nano rsync parted e2fsprogs dosfstools cloud-guest-utils firmware-realtek firmware-iwlwifi intel-microcode grub-efi-amd64-bin grub-pc-bin
-rsync -a /source/harbor/ "$TARGET/opt/harbor/"
-install -m 644 /source/os/harbor.service "$TARGET/etc/systemd/system/harbor.service"
-install -m 755 /source/os/harbor-init "$TARGET/usr/local/sbin/harbor-init"
-install -m 755 /source/os/harbor-console "$TARGET/usr/local/sbin/harbor-console"
-install -m 644 /source/os/harbor-console.service "$TARGET/etc/systemd/system/harbor-console.service"
-install -m 755 /source/os/harbor-subdir "$TARGET/etc/initramfs-tools/scripts/local-bottom/harbor-subdir"
+rsync -a "$SOURCE"/harbor/ "$TARGET/opt/harbor/"
+install -m 644 "$SOURCE"/os/harbor.service "$TARGET/etc/systemd/system/harbor.service"
+install -m 755 "$SOURCE"/os/harbor-init "$TARGET/usr/local/sbin/harbor-init"
+install -m 755 "$SOURCE"/os/harbor-console "$TARGET/usr/local/sbin/harbor-console"
+install -m 644 "$SOURCE"/os/harbor-console.service "$TARGET/etc/systemd/system/harbor-console.service"
+install -m 755 "$SOURCE"/os/harbor-subdir "$TARGET/etc/initramfs-tools/scripts/local-bottom/harbor-subdir"
 mkdir -p "$TARGET/etc/initramfs/post-update.d"
-install -m 755 /source/os/harbor-kernel-update "$TARGET/etc/initramfs/post-update.d/harbor-boot"
-install -m 755 /source/os/harbor-boot-guard "$TARGET/usr/local/sbin/harbor-boot-guard"
-install -m 644 /source/os/harbor-boot-guard.service "$TARGET/etc/systemd/system/harbor-boot-guard.service"
-install -m 644 /source/os/harbor.conf "$TARGET/etc/harbor.conf"
+install -m 755 "$SOURCE"/os/harbor-kernel-update "$TARGET/etc/initramfs/post-update.d/harbor-boot"
+install -m 755 "$SOURCE"/os/harbor-boot-guard "$TARGET/usr/local/sbin/harbor-boot-guard"
+install -m 644 "$SOURCE"/os/harbor-boot-guard.service "$TARGET/etc/systemd/system/harbor-boot-guard.service"
+install -m 644 "$SOURCE"/os/harbor.conf "$TARGET/etc/harbor.conf"
 mkdir -p "$TARGET/etc/systemd/network" "$TARGET/var/lib/harbor" "$TARGET/srv/harbor/storage" "$TARGET/srv/harbor/apps" "$TARGET/etc/samba/harbor.d"
-sh /source/os/install-maintenance.sh /source "$TARGET"
+sh "$SOURCE"/os/install-maintenance.sh "$SOURCE" "$TARGET"
 mkdir -p "$TARGET/etc/systemd/system/ssh.service.d"
 printf '[Unit]\nAfter=harbor.service\n' > "$TARGET/etc/systemd/system/ssh.service.d/harbor.conf"
 mkdir -p "$TARGET/etc/systemd/system/systemd-networkd-wait-online.service.d"
-install -m 644 /source/os/harbor-network-online.conf "$TARGET/etc/systemd/system/systemd-networkd-wait-online.service.d/harbor.conf"
+install -m 644 "$SOURCE"/os/harbor-network-online.conf "$TARGET/etc/systemd/system/systemd-networkd-wait-online.service.d/harbor.conf"
 cat > "$TARGET/etc/systemd/network/20-wired.network" <<'EOF'
 [Match]
 Name=en* eth*
