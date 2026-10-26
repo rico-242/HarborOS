@@ -1,26 +1,21 @@
-"""Signed local updates and an optional public GitHub Releases source."""
-import hashlib,json,os,re,secrets,time,urllib.parse,urllib.request
+"""Signed local updates and owner-configured public/private GitHub releases."""
+import hashlib,json,os,re,secrets
 from datetime import datetime,timezone
 from pathlib import Path
 from release_bundle import inspect_bundle,version,LIMIT
 
-REPO=re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,99}/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\Z')
-class GitHubRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self,request,fp,code,msg,headers,newurl):
-        url=urllib.parse.urlsplit(newurl)
-        if url.scheme!='https' or url.hostname not in ('github.com','release-assets.githubusercontent.com','objects.githubusercontent.com') or url.username or url.password:raise ValueError('GitHub redirected outside its permitted asset hosts.')
-        return super().redirect_request(request,fp,code,msg,headers,newurl)
-def github_open(url):
-    parsed=urllib.parse.urlsplit(url)
-    if parsed.scheme!='https' or parsed.hostname not in ('api.github.com','github.com') or parsed.username or parsed.password:raise ValueError('Use an official GitHub HTTPS release URL.')
-    return urllib.request.build_opener(GitHubRedirect()).open(urllib.request.Request(url,headers={'Accept':'application/vnd.github+json','User-Agent':'Harbour-OS-Updater','X-GitHub-Api-Version':'2022-11-28'}),timeout=30)
+from github_source import GitHubSource
+from github_releases import github_open
 
-class Releases:
+class Releases(GitHubSource):
     def __init__(self,app,run,error,atomic,current):
         self.app,self.run,self.error,self.atomic,self.current=app,run,error,atomic,current
         self.root=app.state/'release-updates'
+        self.root.mkdir(mode=0o700,parents=True,exist_ok=True);self.root.chmod(0o700)
         for name in ('incoming','candidates','jobs','requests'):(self.root/name).mkdir(mode=0o700,parents=True,exist_ok=True)
         self.key=Path('/etc/harbor/update-public.pem');self.config=self.root/'source.json';self.check_file=self.root/'check.json'
+        self.credential=self.root/'github-credential.json'
+        if self.credential.exists():self.credential.chmod(0o600)
     def status(self):
         values=[]
         for path in sorted((self.root/'jobs').glob('*.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:20]:
@@ -29,12 +24,14 @@ class Releases:
             if re.fullmatch('[a-f0-9]{16}',value.get('id','')):self.app.jobs[value['id']]=value;values.append(value)
         return values
     def info(self):
+        source,token=self.source()
         metadata=self.app.state/'release-state.json';installed=json.loads(metadata.read_text()) if metadata.exists() else {}
+        candidates=[json.loads(p.read_text()) for p in sorted((self.root/'candidates').glob('*.json'),key=lambda p:p.stat().st_mtime,reverse=True)]
         return {'current':self.current,'previous':(installed.get('previous') or {}).get('version'),'trusted_key':self.key.exists(),
             'key_fingerprint':hashlib.sha256(self.key.read_bytes()).hexdigest() if self.key.exists() else None,
-            'repository':json.loads(self.config.read_text()).get('repository','') if self.config.exists() else '',
+            'repository':source.get('repository',''),'include_prereleases':source.get('include_prereleases',False),'token_configured':bool(token),
             'check':json.loads(self.check_file.read_text()) if self.check_file.exists() else None,'jobs':self.status(),
-            'candidates':[json.loads(p.read_text()) for p in sorted((self.root/'candidates').glob('*.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:5]]}
+            'candidates':[c for c in candidates if version(c['version'])>version(self.current)][:5]}
     def stage(self,path,ident):
         try:manifest,_=inspect_bundle(path,self.key,self.current)
         except Exception as error:raise self.error(str(error),409)
@@ -58,46 +55,7 @@ class Releases:
     def action(self,data):
         if self.app.demo:raise self.error('Release changes are disabled in the preview.',409)
         action=data.get('action')
-        if action=='source':
-            if not isinstance(data.get('repository',''),str):raise self.error('Use a GitHub owner/repository name.')
-            repo=data.get('repository','').strip()
-            if repo and not REPO.fullmatch(repo):raise self.error('Use a public GitHub owner/repository name.')
-            self.atomic(self.config,{'repository':repo});self.check_file.unlink(missing_ok=True);return {'repository':repo}
-        if action=='check':
-            repo=json.loads(self.config.read_text()).get('repository','') if self.config.exists() else ''
-            if not REPO.fullmatch(repo):raise self.error('Choose a GitHub repository first, or upload a signed update bundle.',409)
-            def check():
-                self.app.job_progress('Checking GitHub','Reading the latest published release.')
-                with github_open('https://api.github.com/repos/'+repo+'/releases/latest') as response:
-                    raw=response.read(2*1024**2+1)
-                if len(raw)>2*1024**2:raise self.error('The GitHub release metadata is too large.')
-                release=json.loads(raw);tag=release.get('tag_name','').removeprefix('v');version(tag)
-                if release.get('draft') or release.get('prerelease'):raise self.error('Only published stable releases are supported.')
-                name='harbour-'+tag+'-amd64.harbour-update';asset=next((a for a in release.get('assets',[]) if a.get('name')==name),None)
-                if not asset:raise self.error('This GitHub release has no Harbour update bundle.')
-                url=asset.get('browser_download_url','');parsed=urllib.parse.urlsplit(url)
-                if parsed.scheme!='https' or parsed.netloc!='github.com' or not parsed.path.startswith('/'+repo+'/releases/download/') or not 0<asset.get('size',0)<=LIMIT:raise self.error('Invalid GitHub update asset.')
-                value={'version':tag,'available':version(tag)>version(self.current),'url':url,'bytes':asset['size'],'checked':datetime.now(timezone.utc).isoformat(),'notes':str(release.get('body',''))[:16000]}
-                self.atomic(self.check_file,value);return value
-            return self.app.job('Check Harbour releases',check,kind='release')
-        if action=='download':
-            if not self.key.exists():raise self.error('No trusted release key is installed.',409)
-            checked=json.loads(self.check_file.read_text()) if self.check_file.exists() else None
-            if not checked or not checked['available']:raise self.error('Check for an available release first.',409)
-            def download():
-                ident=secrets.token_hex(16);path=self.root/'incoming'/(ident+'.bundle')
-                self.app.job_progress('Downloading release','Fetching the GitHub release bundle; it will be verified before installation.')
-                try:
-                    with github_open(checked['url']) as response,path.open('xb') as output:
-                        count=0
-                        while chunk:=response.read(1024**2):
-                            count+=len(chunk)
-                            if count>LIMIT:raise self.error('The release download exceeds 64 MiB.')
-                            output.write(chunk)
-                    self.app.job_progress('Verifying signature','Checking the pinned signing key and payload checksums.')
-                    return self.stage(path,ident)
-                except Exception:path.unlink(missing_ok=True);raise
-            return self.app.job('Download Harbour update',download,kind='release')
+        if action in ('source','check','download'):return self.github_action(action,data)
         if action not in ('install','rollback'):raise self.error('Unknown Harbour update operation.')
         with self.app.lock:
             self.app.system_settings.external_status()

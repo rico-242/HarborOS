@@ -1,0 +1,17 @@
+{
+  "version": "0.4.1",
+  "automated_tests_passed": 46,
+  "signed_vm_upgrade": true,
+  "public_github_check_vm": true,
+  "real_anonymous_discovery_and_signed_download": true,
+  "real_private_authenticated_download_before_public_change": true,
+  "credential_redirect_isolation_tested": true,
+  "owner_storage_network_preserved_vm": true,
+  "token_required_for_official_repository": false,
+  "repository_visibility": "public",
+  "private_signing_key_included": false,
+  "signed_bundle_sha256": "49130ff60457f48dfb06035ec048fdcbb2327a9b81e68acdf7b163ad4466413c",
+  "signed_bundle_bytes": 6046990,
+  "older_cached_candidates_excluded": true,
+  "final_candidate_vm_retested": true
+}

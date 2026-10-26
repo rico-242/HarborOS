@@ -2,11 +2,11 @@
 
 A small home NAS distribution with its own web interface, built on Debian 13. Inspired by the simplicity of ZimaOS and the storage-focused experience of TrueNAS. This is an independent implementation, not a TrueNAS fork.
 
-Version: **0.4.0, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The last baseline ISO is `dist/harbour-0.3.1-amd64.iso`; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.4.0-amd64.harbour-update`. This release does not claim complete ZimaOS feature or pixel parity.
+Version: **0.4.1, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The last baseline ISO is `dist/harbour-0.3.1-amd64.iso`; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.4.1-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
 
 ## What works
 
-- Signed in-place Harbour releases with health checks and recovery, explicit application rollback, and optional public GitHub release discovery. Debian/kernel packages use Debian's signed repositories.
+- Signed in-place Harbour releases with health checks and recovery, explicit application rollback, and public/private GitHub release discovery, write-only read tokens and an optional experimental channel. Debian/kernel packages use Debian's signed repositories.
 - Active/backup and LACP Ethernet bonds, guarded network changes with timed rollback and boot recovery; two NICs are required.
 - App and drive-setup progress windows with real stages, elapsed time, failure details, background/minimize controls and a top-bar task indicator; refined widgets and larger SVG navigation controls.
 - Graphical live installer and first-account setup without a setup code, feature tour, and an unprivileged local Chromium session.
@@ -81,4 +81,3 @@ The data volume is mounted by filesystem UUID. Storage writes are refused if it 
 - ZimaOS inspiration: https://github.com/IceWhaleTech/ZimaOS
 
 Harbor's interface and storage backend are independent implementations. The official app definitions and icons are bundled from IceWhaleTech/CasaOS-AppStore at revision 7743473daff401172d9a155ce904953cda6145ae under Apache 2.0; see harbor/catalog/NOTICE and UPSTREAM-LICENSE. App names and icons belong to their respective projects. Debian component copyright information is retained in the image's /usr/share/doc directories.
-

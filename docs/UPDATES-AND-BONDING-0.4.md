@@ -35,13 +35,11 @@ python tools/build-update.py --version 0.4.1 --key /protected/path/harbour-relea
 
 The builder requires the private key matching the source's public key. It refuses to overwrite an existing key or include one from published source directories. The `--generate-key` option is only for the initial release identity, not each update.
 
-## GitHub later
+## GitHub releases
 
-Local signed updates work without GitHub. Per the chosen setup, no repository or token is configured and nothing has been published remotely.
+The public repository is now [rico-242/HarborOS](https://github.com/rico-242/HarborOS). Version 0.4.1 adds authenticated private-release discovery and asset downloads. See [GitHub update setup](GITHUB-UPDATES-0.4.1.md) for public downloads without authentication, optional private-repository tokens, release channels, and the web upgrade flow. Public repositories remain supported without a token. Local signed uploads continue to work without GitHub.
 
-When ready, create a public GitHub repository, publish a stable release tagged `v<version>`, and attach `harbour-<version>-amd64.harbour-update` plus its `.sha256` file. Enter `owner/repository` in **Settings → Updates → GitHub Releases**. **Check Harbour releases** discovers the latest stable release; **Download & verify** stages its bundle, and installation still requires owner confirmation. Only official GitHub HTTPS/API/asset hosts are accepted, and a GitHub account or checksum alone cannot bypass the pinned signature.
-
-Private GitHub repositories and unattended installation are not implemented. The public-repository client is prepared; an end-to-end published-repository test awaits your repository choice. The design follows [GitHub's Releases API](https://docs.github.com/en/rest/releases/releases) and [OpenSSL Ed25519 verification](https://docs.openssl.org/3.0/man1/openssl-pkeyutl/).
+The design follows [GitHub's Releases API](https://docs.github.com/en/rest/releases/releases), [authenticated release assets](https://docs.github.com/en/rest/releases/assets), and [OpenSSL Ed25519 verification](https://docs.openssl.org/3.0/man1/openssl-pkeyutl/). No unattended installation is enabled.
 
 ## Link aggregation / NIC teaming
 

@@ -26,14 +26,14 @@ rm -f "$target/root/.bash_profile"
 sed -i '/^HARBOR_LIVE=/d' "$target/etc/harbor.conf"
 printf '\nHARBOR_LIVE=1\n' >> "$target/etc/harbor.conf"
 printf '# Live preview: data disks are configured only after installing Harbor.\n' > "$target/etc/fstab"
-printf 'Harbour OS 0.4.0 — graphical live installer\n' > "$target/etc/issue"
+printf 'Harbour OS 0.4.1 — graphical live installer\n' > "$target/etc/issue"
 cat > "$target/etc/os-release" <<'EOF'
 NAME="Harbour OS"
-PRETTY_NAME="Harbour OS 0.4.0 (Debian 13)"
+PRETTY_NAME="Harbour OS 0.4.1 (Debian 13)"
 ID=harbor
 ID_LIKE=debian
-VERSION="0.4.0"
-VERSION_ID="0.4.0"
+VERSION="0.4.1"
+VERSION_ID="0.4.1"
 DEBIAN_CODENAME=trixie
 EOF
 mkdir -p "$target/etc/systemd/resolved.conf.d"
@@ -58,7 +58,7 @@ set default=0
 set timeout=10
 set color_normal=light-gray/black
 set color_highlight=black/light-green
-menuentry 'Harbour OS 0.4.0 — graphical setup and live desktop' {
+menuentry 'Harbour OS 0.4.1 — graphical setup and live desktop' {
   linux /live/vmlinuz boot=live components nopersistence noeject quiet splash console=tty0 console=ttyS0,115200n8
   initrd /live/initrd.img
 }
@@ -68,7 +68,7 @@ menuentry 'Harbour OS — console rescue (live only)' {
 }
 EOF
 cat > "$iso/README.txt" <<'EOF'
-Harbour OS 0.4.0 graphical live installer, x86-64 / amd64.
+Harbour OS 0.4.1 graphical live installer, x86-64 / amd64.
 Write this ISO to USB in raw/DD mode or boot it in a VM. Supports UEFI and legacy BIOS.
 Secure Boot is not supported. At least 4 GB RAM and a separate 16 GiB system disk are required.
 Live mode runs in RAM; it does not install or create storage automatically.
@@ -79,8 +79,8 @@ Official ZimaOS app definitions: IceWhaleTech/CasaOS-AppStore, Apache 2.0. Indiv
 EOF
 (cd "$iso" && find live -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
 mkdir -p /DATA/harbor/release/artifacts
-grub-mkrescue -o /DATA/harbor/release/artifacts/harbour-0.4.0-amd64.iso "$iso" -- -volid HARBOUR_040
+grub-mkrescue -o /DATA/harbor/release/artifacts/harbour-0.4.1-amd64.iso "$iso" -- -volid HARBOUR_041
 cd /DATA/harbor/release/artifacts
-sha256sum harbour-0.4.0-amd64.iso > harbour-0.4.0-amd64.iso.sha256
-xorriso -indev harbour-0.4.0-amd64.iso -report_el_torito plain -report_system_area plain 2>&1 | tail -25
+sha256sum harbour-0.4.1-amd64.iso > harbour-0.4.1-amd64.iso.sha256
+xorriso -indev harbour-0.4.1-amd64.iso -report_el_torito plain -report_system_area plain 2>&1 | tail -25
 printf 'Hybrid live installer ISO built.\n'
