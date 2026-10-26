@@ -40,6 +40,37 @@ def environment(service):
     return {str(k): '' if v is None else str(v) for k,v in result.items()}
 
 
+# These are optional acceleration mappings in the pinned standard Jellyfin entry.
+# Never drop arbitrary app mounts or create fake host hardware directories.
+JELLYFIN_OPTIONAL_DEVICES = {'/dev/dri', '/dev/vcsm', '/dev/vchiq', '/dev/video10', '/dev/video11', '/dev/video12'}
+
+
+def jellyfin_hardware(service):
+    omitted=[]
+    devices=[]
+    for device in service.get('devices', []):
+        parts=device.split(':') if isinstance(device,str) else []
+        source=parts[0] if parts else device.get('source','') if isinstance(device,dict) else ''
+        target=parts[1] if len(parts)>1 else source if parts else device.get('target','') if isinstance(device,dict) else ''
+        if source in JELLYFIN_OPTIONAL_DEVICES and target==source and not Path(source).exists():
+            omitted.append(source)
+        else:
+            devices.append(device)
+    if devices:service['devices']=devices
+    else:service.pop('devices',None)
+    volumes=[]
+    for volume in service.get('volumes', []):
+        parts=volume.split(':') if isinstance(volume,str) else []
+        source=parts[0] if parts else volume.get('source','')
+        target=parts[1] if len(parts)>1 else '' if parts else volume.get('target','')
+        if source==target=='/opt/vc/lib' and not Path(source).exists():
+            omitted.append(source)
+        else:
+            volumes.append(volume)
+    service['volumes']=volumes
+    return omitted
+
+
 def prepare(ident, apps, storage, uid=1000, gid=1000, options=None):
     item = OFFICIAL[ident]
     options = options or {}
@@ -53,13 +84,17 @@ def prepare(ident, apps, storage, uid=1000, gid=1000, options=None):
     spec.pop('name', None)
     spec.pop('x-casaos', None)
     spec.pop('version', None)
-    warnings, fields, ports = [], [], []
+    warnings, fields, ports, compatibility = [], [], [], []
     allowed_fields = set()
     for name, service in spec['services'].items():
         if not isinstance(service, dict) or not service.get('image') or service.get('build'):
             raise ValueError('This entry needs a source build and cannot be installed from the store.')
         service.pop('x-casaos', None)
         service.pop('container_name', None)
+        if ident=='jellyfin':
+            omitted=jellyfin_hardware(service)
+            if omitted:
+                compatibility.append(f"{name}: unavailable optional hardware skipped ({', '.join(omitted)}). Software playback remains available.")
         if service.get('privileged'):
             warnings.append(f'{name}: privileged container, with full device access')
         if service.get('network_mode') == 'host':
@@ -117,7 +152,7 @@ def prepare(ident, apps, storage, uid=1000, gid=1000, options=None):
     arch=item.get('architectures') or []
     if arch and 'amd64' not in arch and 'x86_64' not in arch:
         raise ValueError('This application does not support x86-64 computers.')
-    return {'compose':spec,'environment':fields,'warnings':sorted(set(warnings)),'ports':ports}
+    return {'compose':spec,'environment':fields,'warnings':sorted(set(warnings)),'ports':ports,'compatibility':compatibility}
 
 
 def public_item(item):

@@ -1,0 +1,12 @@
+{
+  "version": "0.5.1",
+  "signed_upgrade": true,
+  "owner_preserved": true,
+  "storage_preserved": true,
+  "network_preserved": true,
+  "jellyfin_install_completed": true,
+  "jellyfin_health_http": 200,
+  "available_gpu_retained": true,
+  "missing_pi_hardware_omitted": true,
+  "jellyfin_url": "http://192.168.1.97:8097"
+}
