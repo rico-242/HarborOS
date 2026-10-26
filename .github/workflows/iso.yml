@@ -14,7 +14,7 @@ on:
         default: true
 
 concurrency:
-  group: iso-${{ github.event.release.tag_name || github.ref }}
+  group: iso-${{ github.event.release.tag_name || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
