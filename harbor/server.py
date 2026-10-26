@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.4.1'
+VERSION = '0.5.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -844,7 +844,7 @@ class Handler(BaseHTTPRequestHandler):
             raise APIError('Endpoint not found.', 404)
         static = {'/': 'index.html', '/app.js': 'app.js', '/onboarding.js':'onboarding.js','/desktop.js':'desktop.js','/desktop.css':'desktop.css','/features.js':'features.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg'}
         static.update({'/process.js':'process.js','/widgets.js':'widgets.js','/refinements.css':'refinements.css'})
-        static.update({'/maintenance.js':'maintenance.js','/maintenance.css':'maintenance.css'})
+        static.update({'/maintenance.js':'maintenance.js','/maintenance.css':'maintenance.css','/theme.js':'theme.js','/experience.js':'experience.js','/experience.css':'experience.css','/wallpaper.svg':'wallpaper.svg'})
         if route.startswith('/catalog/icons/'):
             name=route.removeprefix('/catalog/icons/')
             if not re.fullmatch(r'[a-z0-9][a-z0-9_.-]{0,70}\.(svg|png|jpg|jpeg|webp|gif)',name):

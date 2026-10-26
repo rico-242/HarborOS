@@ -22,7 +22,7 @@ with tarfile.open(root / ('dist/harbour-'+release+'-source.tar.gz'), 'w:gz') as 
         if (root/'dist'/name).is_file():archive.add(root / 'dist' / name, arcname='dist/' + name)
 
 with tarfile.open(root / 'dist/harbor-dark-desktop-ui.tar.gz', 'w:gz') as archive:
-    for name in ('index.html', 'app.js','features.js','desktop.js','widgets.js','process.js','refinements.css','maintenance.js','maintenance.css','onboarding.js','install.js','install.html','desktop.css', 'style.css', 'favicon.svg'):
+    for name in ('index.html', 'app.js','features.js','desktop.js','widgets.js','process.js','refinements.css','maintenance.js','maintenance.css','theme.js','experience.js','experience.css','wallpaper.svg','onboarding.js','install.js','install.html','desktop.css', 'style.css', 'favicon.svg'):
         archive.add(root / 'harbor/web' / name, arcname=name)
 
 print('Source and dark desktop UI packaged.')

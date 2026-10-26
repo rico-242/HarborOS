@@ -20,7 +20,7 @@ WEB=Path('/opt/harbor/web')
 class Installer:
     def __init__(self,demo=False):
         self.demo=demo;self.sessions={};self.plans={};self.lock=threading.RLock()
-        self.status={'phase':'ready','stage':'Choose a disk','log':[],'version':'0.4.1','demo':demo}
+        self.status={'phase':'ready','stage':'Choose a disk','log':[],'version':'0.5.0','demo':demo}
         self.logs=deque(maxlen=40)
         if not demo:
             if 'boot=live' not in Path('/proc/cmdline').read_text().split():raise RuntimeError('The installer runs only from the live medium.')
@@ -91,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply({'csrf':csrf,'demo':app.demo},cookie=f'harbor-installer={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600')
             if route=='/api/disks':return self.reply(app.disks())
             if route=='/api/status':return self.reply(app.status)
-            files={'/':'install.html','/install.js':'install.js','/style.css':'style.css','/desktop.css':'desktop.css','/favicon.svg':'favicon.svg'}
+            files={'/':'install.html','/install.js':'install.js','/style.css':'style.css','/desktop.css':'desktop.css','/favicon.svg':'favicon.svg','/theme.js':'theme.js','/experience.css':'experience.css','/wallpaper.svg':'wallpaper.svg'}
             if route not in files:return self.reply({'error':'Not found'},404)
             path=WEB/files[route];content=path.read_bytes();self.send_response(200);self.headers_common()
             self.send_header('Content-Type',{'html':'text/html','js':'text/javascript','css':'text/css','svg':'image/svg+xml'}[path.suffix[1:]])

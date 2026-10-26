@@ -2,9 +2,11 @@
 
 A small home NAS distribution with its own web interface, built on Debian 13. Inspired by the simplicity of ZimaOS and the storage-focused experience of TrueNAS. This is an independent implementation, not a TrueNAS fork.
 
-Version: **0.4.1, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The last baseline ISO is `dist/harbour-0.3.1-amd64.iso`; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.4.1-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
+Version: **0.5.0, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The last baseline ISO is `dist/harbour-0.3.1-amd64.iso`; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.5.0-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
 
 ## What works
+
+- Reference-based light and dark themes with green accents, redesigned Files/App Store/Settings/RAID screens, saved favorites and navigation history, local featured banners, and inline widget switches. See the [0.5.0 design notes and screenshots](docs/DESIGN-0.5.0.md).
 
 - Signed in-place Harbour releases with health checks and recovery, explicit application rollback, and public/private GitHub release discovery, write-only read tokens and an optional experimental channel. Debian/kernel packages use Debian's signed repositories.
 - Active/backup and LACP Ethernet bonds, guarded network changes with timed rollback and boot recovery; two NICs are required.

@@ -1,0 +1,48 @@
+{
+  "revision": "7743473daff401172d9a155ce904953cda6145ae",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "id": "blinko",
+      "file": "featured-blinko.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/Blinko/thumbnail.png",
+      "sha256": "c561ae75ed6ae111c3eb626ad6573e137e7099c83a112aaa993bbf74b65b68cc"
+    },
+    {
+      "id": "openclaw",
+      "file": "featured-openclaw.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/OpenClaw/thumbnail.png",
+      "sha256": "7efaf9bc893fd8807f859c8016f8df36302c1d28ce2831a5f43596e43d8e9f1f"
+    },
+    {
+      "id": "weknora",
+      "file": "featured-weknora.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/WeKnora/thumbnail.png",
+      "sha256": "68f419e1762d8de7cd17750d9e89fe685be4be1f223fd6c17fe98c862f1f670a"
+    },
+    {
+      "id": "openwebui",
+      "file": "featured-openwebui.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/OpenWebUI/thumbnail.png",
+      "sha256": "beebab41d638affc5240e09ba696be75ab4e3d837daddfaef1cd549b51a73c30"
+    },
+    {
+      "id": "immich",
+      "file": "featured-immich.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/Immich/thumbnail.png",
+      "sha256": "8f3fc7d8b75b7f8c489cfa69f7d34ca7607e376ffc06feedcabe99f2dbe2760b"
+    },
+    {
+      "id": "archivebox",
+      "file": "featured-archivebox.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/ArchiveBox/thumbnail.png",
+      "sha256": "308a6330b6b9af5edb7af0a11e6c16de36dd8e84b985cc53349ecc8d0b421479"
+    },
+    {
+      "id": "jellyfin",
+      "file": "featured-jellyfin.png",
+      "source": "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/7743473daff401172d9a155ce904953cda6145ae/Apps/Jellyfin/thumbnail.png",
+      "sha256": "19fdbddc0ba8effb80fb89c20976d3d3f58b6446cccdacf7708b4784b74ac8ef"
+    }
+  ]
+}

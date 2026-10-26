@@ -9,9 +9,9 @@ let csrf = '', username = '', route = 'home', filePath = '', setupRequired = fal
 const announcedJobs = new Set();
 let desktopDragging=false, draggedLauncher='', catalogFilter='All';
 let pointerDrag=null, suppressLauncherClickUntil=0;
-const desktopDefaults={wallpaper:'dark',widgets:{stats:true,storage:true,connection:true},order:[]};
+const desktopDefaults={wallpaper:'dark',widgets:{clock:true,stats:true,storage:true,connection:true},order:[]};
 function loadDesktop() {
-  try {const p=JSON.parse(localStorage.getItem('harbor.desktop.v2')||'{}');return {wallpaper:p.wallpaper==='black'?'black':'dark',widgets:{stats:p.widgets?.stats!==false,storage:p.widgets?.storage!==false,connection:p.widgets?.connection!==false},order:Array.isArray(p.order)?p.order.filter(x=>typeof x==='string').slice(0,30):[]};}
+  try {const p=JSON.parse(localStorage.getItem('harbor.desktop.v2')||'{}');return {wallpaper:p.wallpaper==='black'?'black':'dark',widgets:{clock:p.widgets?.clock!==false,stats:p.widgets?.stats!==false,storage:p.widgets?.storage!==false,connection:p.widgets?.connection!==false},order:Array.isArray(p.order)?p.order.filter(x=>typeof x==='string').slice(0,30):[]};}
   catch{return JSON.parse(JSON.stringify(desktopDefaults));}
 }
 let desktopPrefs=loadDesktop();
@@ -52,7 +52,7 @@ function launcherHTML(app){
   return `<div class="launcher-tile" draggable="false" data-launcher="${E(id)}" data-search="${E((app.label||app.name)+' '+(app.description||''))}"><${tag} class="launcher-button" draggable="false" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight" ${attrs} title="${E(app.description||app.name)}">${inside}</${tag}></div>`;
 }
 function orderedLaunchers(apps){const map=new Map(apps.map(a=>[a.external?'app-'+a.id:a.id,a]));return [...new Set([...desktopPrefs.order,...map.keys()])].filter(id=>map.has(id)).map(id=>map.get(id));}
-function tickClock(){const now=new Date();document.querySelectorAll('.desktop-clock').forEach(el=>el.textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hour12:false}).format(now));document.querySelectorAll('.desktop-date').forEach(el=>el.textContent=new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric'}).format(now));}
+function tickClock(){const now=new Date();document.querySelectorAll('.desktop-clock').forEach(el=>el.textContent=new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit',hour12:harbourAppearance.timeFormat==='12'}).format(now));document.querySelectorAll('.desktop-date').forEach(el=>el.textContent=new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric'}).format(now));}
 function applySearch(){
   if(route==='apps'){storeSearch();return;}
   const query=($('#app-search')?.value||'').trim().toLocaleLowerCase();let visible=0;
@@ -62,7 +62,9 @@ function applySearch(){
 function renderContent(html,keepFocus=false){
   const focused=keepFocus?document.activeElement.closest?.('[data-launcher]')?.dataset.launcher:null;
   const advisoryOpen=keepFocus&&document.querySelector('.drive-advisory')?.open;
+  const widgetPrefsOpen=keepFocus&&document.querySelector('#widget-preferences')?.open;
   $('#content').innerHTML=html;applySearch();tickClock();windowChrome();
+  if(widgetPrefsOpen&&document.querySelector('#widget-preferences'))document.querySelector('#widget-preferences').open=true;
   if(advisoryOpen&&document.querySelector('.drive-advisory'))document.querySelector('.drive-advisory').open=true;
   if(focused){const tile=[...document.querySelectorAll('[data-launcher]')].find(el=>el.dataset.launcher===focused);tile?.querySelector('button,a')?.focus({preventScroll:true});}
 }
@@ -158,7 +160,7 @@ document.addEventListener('click',async event=>{
     if(action==='copy-address'){await navigator.clipboard.writeText(location.origin);toast('Server address copied.');}
     if(action==='clear-search'){$('#app-search').value='';applySearch();$('#app-search').focus();}
     if(action==='catalog-filter'){catalogFilter=target.dataset.filter;document.querySelectorAll('.filter-tab').forEach(el=>el.classList.toggle('active',el.dataset.filter===catalogFilter));applySearch();}
-    if(action==='customize-desktop')dialog('Widget settings',`<label class="pref-row"><span>System<small>CPU, memory, and temperature</small></span><input type="checkbox" name="stats" ${desktopPrefs.widgets.stats?'checked':''}></label><label class="pref-row"><span>Storage<small>Capacity and drive advisories</small></span><input type="checkbox" name="storage" ${desktopPrefs.widgets.storage?'checked':''}></label><label class="pref-row"><span>Network<small>Live upload and download traffic</small></span><input type="checkbox" name="connection" ${desktopPrefs.widgets.connection?'checked':''}></label><label>Wallpaper<select name="wallpaper"><option value="dark" ${desktopPrefs.wallpaper==='dark'?'selected':''}>Dark waves</option><option value="black" ${desktopPrefs.wallpaper==='black'?'selected':''}>Solid black</option></select></label><button type="button" class="text-button reset-desktop" data-action="reset-desktop">Reset desktop layout</button>`,'Save',async data=>{desktopPrefs.widgets={stats:data.has('stats'),storage:data.has('storage'),connection:data.has('connection')};desktopPrefs.wallpaper=data.get('wallpaper')==='black'?'black':'dark';saveDesktop();toast('Desktop updated.');});
+    if(action==='customize-desktop')dialog('Widget settings',`<label class="pref-row"><span>Time</span><input type="checkbox" name="clock" ${desktopPrefs.widgets.clock!==false?'checked':''}></label><label class="pref-row"><span>System<small>CPU, memory, and temperature</small></span><input type="checkbox" name="stats" ${desktopPrefs.widgets.stats?'checked':''}></label><label class="pref-row"><span>Storage<small>Capacity and drive advisories</small></span><input type="checkbox" name="storage" ${desktopPrefs.widgets.storage?'checked':''}></label><label class="pref-row"><span>Network<small>Live upload and download traffic</small></span><input type="checkbox" name="connection" ${desktopPrefs.widgets.connection?'checked':''}></label><label>Wallpaper<select name="wallpaper"><option value="dark" ${desktopPrefs.wallpaper==='dark'?'selected':''}>Dark waves</option><option value="black" ${desktopPrefs.wallpaper==='black'?'selected':''}>Solid black</option></select></label><button type="button" class="text-button reset-desktop" data-action="reset-desktop">Reset desktop layout</button>`,'Save',async data=>{desktopPrefs.widgets={clock:data.has('clock'),stats:data.has('stats'),storage:data.has('storage'),connection:data.has('connection')};desktopPrefs.wallpaper=data.get('wallpaper')==='black'?'black':'dark';saveDesktop();toast('Desktop updated.');});
     if(action==='reset-desktop'){desktopPrefs=JSON.parse(JSON.stringify(desktopDefaults));saveDesktop();closeDialog();await navigate('home');toast('Desktop layout reset.');}
     if(action==='new-share')dialog('A new shared folder.','<p class="small">Give it a simple name. Only your NAS account can access it.</p><label>Folder name<input name="name" placeholder="Documents" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,47}" maxlength="48" required autofocus></label>','Create folder',async data=>{await api('/api/shares',{name:data.get('name')});toast('Your shared folder is ready.');});
     if(action==='open-folder'){filePath=target.dataset.path;await navigate('files');}
@@ -218,4 +220,4 @@ document.addEventListener('pointerup',event=>{
 document.addEventListener('pointercancel',clearPointerDrag);
 document.addEventListener('click',event=>{if(performance.now()<suppressLauncherClickUntil&&event.target.closest('[data-launcher]')){event.preventDefault();event.stopImmediatePropagation();}},true);
 window.addEventListener('hashchange',()=>{const next=location.hash.slice(1);if(csrf&&labels[next]&&next!==route)navigate(next);});
-(async()=>{try{health=await api('/api/health');setupRequired=health.setup_required;if(setupRequired){welcomeScreen();return;}try{const session=await api('/api/session');if(!health.onboarding_complete&&session.role==='owner'){csrf=session.csrf;username=session.username;featureTour();}else signedIn(session);}catch{showAuth();}}catch(error){showAuth();$('#auth-error').textContent=error.message;}})();
+document.addEventListener('DOMContentLoaded',async()=>{try{health=await api('/api/health');setupRequired=health.setup_required;if(setupRequired){welcomeScreen();return;}try{const session=await api('/api/session');if(!health.onboarding_complete&&session.role==='owner'){csrf=session.csrf;username=session.username;featureTour();}else signedIn(session);}catch{showAuth();}}catch(error){showAuth();$('#auth-error').textContent=error.message;}},{once:true});

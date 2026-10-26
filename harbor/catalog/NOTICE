@@ -1,3 +1,5 @@
 Official ZimaOS app definitions from IceWhaleTech/CasaOS-AppStore, Apache License 2.0.
 Snapshot 7743473daff401172d9a155ce904953cda6145ae. Converted from YAML to JSON; Harbor supplies its own UI and Compose adapter.
 Application images, icons, and names belong to their respective projects.
+
+Featured banner PNGs for Blinko, OpenClaw, WeKnora, Open WebUI, Immich, ArchiveBox and Jellyfin are bundled unchanged from the same pinned CasaOS-AppStore revision under its Apache-2.0 license. Source URLs and SHA-256 values are recorded in featured-artwork.json. Original project names, artwork and trademarks belong to their respective owners.

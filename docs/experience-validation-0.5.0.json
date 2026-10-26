@@ -1,0 +1,22 @@
+{
+  "version": "0.5.0",
+  "automated_tests_passed": 48,
+  "javascript_syntax_checked": true,
+  "reference_screenshots_reviewed": 7,
+  "video_timeline_chapters_reviewed": 12,
+  "video_frames_reviewed": 222,
+  "video_sampling_seconds": 5,
+  "light_dark_browser_validation": true,
+  "theme_persistence": true,
+  "file_favorites_history_selection_copy_preview": true,
+  "inline_widget_switches": true,
+  "catalog_search_and_featured_navigation": true,
+  "signed_vm_upgrade": true,
+  "account_storage_network_preserved_vm": true,
+  "official_artwork_pinned": true,
+  "source_research_media_excluded": true,
+  "signed_bundle_sha256": "41f8014467f6c798c1c9090ffff14e9b667ca64f4df8c625d4db56b3ffcd6083",
+  "signed_bundle_bytes": 10727690,
+  "older_cached_candidates_excluded": true,
+  "final_candidate_vm_retested": true
+}

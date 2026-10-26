@@ -29,10 +29,7 @@ tar -czf "/var/lib/harbor/release-backups/pre-updater-$stamp.tar.gz" -C /opt har
 tar -xzf /tmp/harbor-source.tar.gz -C /DATA/harbor/source
 sh /DATA/harbor/source/os/install-maintenance.sh /DATA/harbor/source /
 rsync -a --delete /DATA/harbor/source/harbor/ /opt/harbor/
-python3 - <<'PY'
-from pathlib import Path
-path=Path('/opt/harbor/server.py');path.write_text(path.read_text().replace("VERSION = '0.4.0'","VERSION = '0.3.1'"))
-PY
+python3 /DATA/harbor/source/tools/bridge-baseline.py
 install -m 644 /DATA/harbor/source/os/harbor.service /etc/systemd/system/harbor.service
 systemctl daemon-reload
 systemctl start harbour-update-recover.service

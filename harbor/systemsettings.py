@@ -34,7 +34,13 @@ class SystemSettings:
                 services[name]=self.run('systemctl','is-active',name,check=False).stdout.strip()
         updates=json.loads(self.check_file.read_text()) if self.check_file.exists() else {'checked':None,'packages':[]}
         self.external_status()
-        return {'hostname':socket.gethostname(),'timezone':zone,'timezones':sorted(available_timezones() or {'Etc/UTC'}),
+        def device_value(name):
+            try:return Path('/sys/class/dmi/id/'+name).read_text().strip()[:160]
+            except OSError:return ''
+        try:cpu=next((line.split(':',1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines() if line.startswith('model name')),'')
+        except OSError:cpu=platform.processor()
+        device={'model':device_value('product_name') or 'Harbour NAS','vendor':device_value('sys_vendor'),'cpu':cpu}
+        return {'device':device,'hostname':socket.gethostname(),'timezone':zone,'timezones':sorted(available_timezones() or {'Etc/UTC'}),
                 'network':network,'services':services,'kernel':platform.release(),'updates':updates,
                 'update':json.loads(self.update_file.read_text()) if self.update_file.exists() else None}
 

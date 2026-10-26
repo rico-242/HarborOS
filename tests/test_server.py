@@ -144,7 +144,7 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.app.jobs[job['id']]['state'], 'failed')
 
     def test_static_content_headers(self):
-        for path in ('/', '/app.js', '/style.css', '/favicon.svg','/process.js','/widgets.js','/refinements.css'):
+        for path in ('/', '/app.js', '/style.css', '/favicon.svg','/process.js','/widgets.js','/refinements.css','/theme.js','/experience.js','/experience.css','/wallpaper.svg','/catalog/icons/featured-blinko.png'):
             status, _, headers = self.request(path)
             self.assertEqual(status, 200)
             self.assertIn("frame-ancestors 'none'", headers['Content-Security-Policy'])
