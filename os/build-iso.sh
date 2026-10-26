@@ -29,7 +29,7 @@ rm -f "$target/root/.bash_profile"
 sed -i '/^HARBOR_LIVE=/d' "$target/etc/harbor.conf"
 printf '\nHARBOR_LIVE=1\n' >> "$target/etc/harbor.conf"
 printf '# Live preview: data disks are configured only after installing Harbor.\n' > "$target/etc/fstab"
-printf 'Harbour OS $version — graphical live installer\n' > "$target/etc/issue"
+printf 'Harbour OS %s - graphical live installer\n' "$version" > "$target/etc/issue"
 cat > "$target/etc/os-release" <<EOF
 NAME="Harbour OS"
 PRETTY_NAME="Harbour OS $version (Debian 13)"
