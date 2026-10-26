@@ -15,8 +15,10 @@ assert health['live'] and health['setup_required'] and installer['phase']=='read
 assert not Path('/var/lib/harbor/admin.json').exists()
 assert not Path('/var/lib/harbor/release-updates/github-credential.json').exists()
 assert subprocess.check_output(['systemctl','is-active','lightdm','harbor','harbor-installer'],text=True).split()==['active']*3
-for asset in ('theme.js','experience.css','experience.js','install.html','install.js','wallpaper.svg','catalog/icons/featured-blinko.png'):
+for asset in ('theme.js','experience.css','experience.js','wallpaper.svg','catalog/icons/featured-blinko.png'):
  assert urllib.request.urlopen('http://127.0.0.1:17080/'+asset).status==200,asset
+for asset in ('','install.js','theme.js','experience.css'):
+ assert urllib.request.urlopen('http://127.0.0.1:17081/'+asset).status==200,asset
 assert hashlib.sha256(Path('/etc/harbor/update-public.pem').read_bytes()).hexdigest()==KEY
 print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists()}))
 '''
@@ -61,7 +63,9 @@ for firmware in ('bios','uefi'):
       if status.get('exitcode')!=0:raise RuntimeError(err or out)
       value=json.loads(out);assert value['uefi']==(firmware=='uefi')
       results[firmware]=value;print(firmware+': '+out,flush=True);break
-     except (OSError,RuntimeError,ValueError) as error:last=str(error);time.sleep(3)
+     except (OSError,RuntimeError,ValueError) as error:
+      if str(error)!=last:print(firmware+': waiting: '+str(error),flush=True)
+      last=str(error);time.sleep(3)
     else:raise RuntimeError(f'{firmware} boot check failed: {last}\n'+(d/'serial.log').read_text(errors='replace')[-5000:])
    finally:
     process.terminate()
