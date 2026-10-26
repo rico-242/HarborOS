@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Harbour OS
+Comment=Harbour OS graphical console
+Exec=/usr/local/sbin/harbor-kiosk-session
+Type=Application
+DesktopNames=Harbour

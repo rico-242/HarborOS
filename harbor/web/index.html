@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101112">
+  <title>Harbour OS</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/desktop.css">
+  <link rel="stylesheet" href="/refinements.css">
+  <link rel="stylesheet" href="/maintenance.css">
+  <script src="/onboarding.js" defer></script>
+  <script src="/features.js" defer></script>
+  <script src="/desktop.js" defer></script>
+  <script src="/widgets.js" defer></script>
+  <script src="/maintenance.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/process.js" defer></script>
+</head>
+<body>
+  <div id="onboarding" class="onboarding-shell" hidden></div>
+  <div id="auth" class="auth-shell" hidden>
+    <section class="auth-story">
+      <a class="brand" href="/"><span class="brand-mark">h.</span> harbour<span class="brand-os">OS</span></a>
+      <div><span class="eyebrow">A PLACE FOR EVERYTHING</span><h1>Your digital life.<br>Right at home.</h1><p>Your files, your apps, your own little corner of the internet. Welcome aboard.</p></div>
+      <span class="auth-footer">Built for the things you want to keep.</span>
+    </section>
+    <section class="auth-form-wrap">
+      <form id="auth-form" class="auth-form">
+        <span class="eyebrow">YOUR PERSONAL SERVER</span>
+        <h2 id="auth-title">Welcome back.</h2>
+        <p id="auth-description">Sign in to your Harbour.</p>
+        <label>Username<input name="username" autocomplete="username" required maxlength="32"></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+        <p id="auth-error" class="error" role="alert"></p>
+        <button class="button primary" type="submit" id="auth-submit">Sign in <span aria-hidden="true">↗</span></button>
+        <p class="small" id="setup-help">Your server. Your credentials.</p>
+      </form>
+    </section>
+  </div>
+  <div id="shell" class="shell" hidden>
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="system-controls"><a class="top-brand" href="#home" aria-label="Harbour home"><span>h.</span></a><div class="top-navigation"><button class="top-icon" data-route="home" title="Home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z"/><path d="M9 20v-7h6v7"/></svg></button><button class="top-icon" data-route="settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 2 4 4-1 1-3 3-1 1-4-3-2 1-3-3-2-3 1-2-3Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+        <div class="global-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="app-search" type="search" placeholder="Search…" aria-label="Search apps and tools" autocomplete="off"><kbd>/</kbd></div>
+        <div class="topbar-right"><span id="preview-label" class="badge" hidden>PREVIEW</span><span id="server-name" hidden>Harbour</span><button class="top-icon task-control" data-action="process-list" aria-label="Background tasks" title="Background tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h9M4 19h9"/><circle cx="18" cy="16" r="4"/><path d="M18 14v2l1 1"/></svg><span id="task-count" hidden>0</span></button><button class="top-icon" data-route="activity" aria-label="Activity log" title="Activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></button><span class="top-divider"></span><button id="account-menu-button" class="avatar" aria-label="Account menu" title="Account" aria-expanded="false"><span id="account-avatar">R</span></button><div id="account-menu" class="account-menu" hidden><strong id="account-name"></strong><span id="account-role"></span><button data-route="settings">Account settings</button><button id="logout">Sign out</button></div><span class="system-name" hidden>Harbour OS</span></div>
+      </header>
+      <div class="breadcrumb" hidden>Your Harbour <span>/</span><strong id="breadcrumb">Home</strong></div>
+      <div id="desktop-backdrop" class="desktop-backdrop" aria-hidden="true" inert hidden></div>
+      <section id="app-window" class="app-window">
+        <header id="window-chrome" class="window-chrome" hidden><span id="window-glyph"></span><span id="window-caption"></span><div class="window-controls"><button data-action="window-minimize" aria-label="Minimize window" title="Minimize">−</button><button data-action="window-maximize" aria-label="Maximize window" title="Maximize">□</button><button data-action="window-close" aria-label="Close window" title="Close">×</button></div></header>
+        <main id="content" tabindex="-1"></main>
+      </section>
+      <nav class="desktop-dock" aria-label="Main navigation">
+        <button data-route="home" class="nav-item active" aria-label="Home" title="Home"><span class="nav-icon">⌂</span><span class="dock-label">Home</span></button>
+        <button data-route="files" class="nav-item" aria-label="Files" title="Files"><span class="nav-icon">▤</span><span class="dock-label">Files</span></button>
+        <button data-route="apps" class="nav-item" aria-label="App Store" title="App Store"><span class="nav-icon">⊞</span><span class="dock-label">App Store</span></button>
+        <button data-route="storage" class="nav-item" aria-label="Storage" title="Storage"><span class="nav-icon">▱</span><span class="dock-label">Storage</span></button>
+        <button data-route="sharing" class="nav-item" aria-label="Sharing" title="Sharing"><span class="nav-icon">⇄</span><span class="dock-label">Sharing</span></button>
+        <button data-route="snapshots" class="nav-item" aria-label="Snapshots" title="Snapshots"><span class="nav-icon">◷</span><span class="dock-label">Snapshots</span></button>
+        <button data-route="settings" class="nav-item" aria-label="Settings" title="Settings"><span class="nav-icon">⚙</span><span class="dock-label">Settings</span></button>
+      </nav>
+      <footer class="main-footer"><span>Your own little corner of the cloud.</span><span>Harbour OS <span id="footer-version">0.4.0</span><span id="sidebar-version" hidden></span></span></footer>
+    </div>
+  </div>
+  <div id="toast" role="status" class="toast" hidden></div>
+  <section id="process-window" class="process-window" role="dialog" aria-modal="false" aria-labelledby="process-title" tabindex="-1" hidden><header class="process-chrome"><span id="process-glyph"></span><span id="process-caption">Background tasks</span><button class="process-hide" data-action="process-hide" aria-label="Minimize progress window" title="Run in background">−</button></header><div id="process-body"></div></section>
+  <div id="window-taskbar" class="window-taskbar" hidden><button id="restore-window" data-action="window-restore"></button></div>
+  <div id="file-context" class="file-context" role="menu" hidden></div>
+  <dialog id="modal"><form id="modal-form"><div class="dialog-head"><h2 id="modal-title"></h2><button type="button" class="icon-button" id="modal-close" aria-label="Close dialog">×</button></div><div id="modal-body"></div><p id="modal-error" class="error" role="alert"></p><div class="dialog-actions"><button type="button" id="modal-cancel" class="button secondary">Cancel</button><button type="submit" class="button primary" id="modal-submit">Create</button></div></form></dialog>
+</body>
+</html>

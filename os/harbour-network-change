@@ -1,0 +1,10 @@
+#!/usr/bin/python3
+import os,sys
+os.umask(0o077)
+sys.path.insert(0,'/opt/harbor')
+from network_worker import main,record_failure
+if __name__=='__main__':
+    try:main(*sys.argv[1:])
+    except Exception as error:
+        record_failure(sys.argv[2] if len(sys.argv)>2 else None,error)
+        print(str(error),file=sys.stderr);sys.exit(1)

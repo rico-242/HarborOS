@@ -1,0 +1,11 @@
+[Unit]
+Description=Harbor OS console welcome
+After=harbor.service getty@tty1.service
+Requires=harbor.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/harbor-console
+
+[Install]
+WantedBy=multi-user.target

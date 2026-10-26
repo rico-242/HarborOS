@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+import json,os,re,subprocess,sys,fcntl
+from datetime import datetime,timezone
+from pathlib import Path
+ident=sys.argv[1]
+if not re.fullmatch('[a-f0-9]{16}',ident):raise SystemExit('Invalid job identity')
+path=Path('/var/lib/harbor/system-update.json')
+def write(state,error=None):
+    value={'id':ident,'title':'Install system package updates','state':state,'external':True,'actor':'',
+           'updated':datetime.now(timezone.utc).isoformat()}
+    if error:value['error']=error
+    temporary=path.with_suffix('.new');temporary.write_text(json.dumps(value));temporary.chmod(0o600);temporary.replace(path)
+os.umask(0o077);write('running')
+try:
+    maintenance=Path('/run/harbour-maintenance.lock').open('w')
+    fcntl.flock(maintenance,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    environment=dict(os.environ,DEBIAN_FRONTEND='noninteractive',NEEDRESTART_MODE='l')
+    with Path('/var/log/harbour-update.log').open('a') as log:
+        subprocess.run(['apt-get','update'],env=environment,stdout=log,stderr=subprocess.STDOUT,check=True)
+        subprocess.run(['apt-get','-y','-o','Dpkg::Options::=--force-confold','upgrade'],env=environment,stdout=log,stderr=subprocess.STDOUT,check=True)
+    write('completed')
+except Exception:
+    write('failed','Package updates stopped. The owner can inspect /var/log/harbour-update.log over SSH.');sys.exit(1)

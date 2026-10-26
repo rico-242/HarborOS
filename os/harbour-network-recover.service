@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore unconfirmed Harbour network changes before networking
+DefaultDependencies=no
+After=local-fs.target harbour-update-recover.service
+Requires=harbour-update-recover.service
+Before=network-pre.target systemd-networkd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/harbour-network-change recover
+
+[Install]
+WantedBy=network-pre.target systemd-networkd.service

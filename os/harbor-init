@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+umask 077
+mkdir -p /var/lib/harbor /srv/harbor/storage /srv/harbor/apps
+if [ ! -f /var/lib/harbor/tls.key ] || [ "${1:-}" = --renew-certificate ]; then
+  san='DNS:harbor.local,DNS:harbor,IP:127.0.0.1'
+  for addr in $(hostname -I); do
+    case "$addr" in [0-9]*.*) san="$san,IP:$addr";; esac
+  done
+  if [ -f /var/lib/harbor/tls.key ]; then
+    openssl req -x509 -new -key /var/lib/harbor/tls.key -days 365 -out /var/lib/harbor/tls.crt.new -subj /CN=harbor.local -addext "subjectAltName=$san"
+  else
+    openssl req -x509 -newkey rsa:3072 -nodes -days 365 -keyout /var/lib/harbor/tls.key -out /var/lib/harbor/tls.crt.new -subj /CN=harbor.local -addext "subjectAltName=$san"
+  fi
+  mv /var/lib/harbor/tls.crt.new /var/lib/harbor/tls.crt
+fi
+ssh-keygen -A
+rm -f /var/lib/harbor/setup-token

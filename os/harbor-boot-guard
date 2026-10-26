@@ -1,0 +1,9 @@
+#!/bin/sh
+# Trial boots must be acknowledged remotely. GRUB consumes the one-shot entry,
+# so a failed trial returns to the previous OS on the next reboot.
+case " $(cat /proc/cmdline) " in *' harbor.trial=1 '*) ;; *) exit 0;; esac
+sleep 240
+if [ ! -f /var/lib/harbor/boot-confirmed ]; then
+  logger -t harbor 'Trial boot was not confirmed. Rebooting to the previous boot entry.'
+  systemctl reboot
+fi

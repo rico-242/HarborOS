@@ -1,0 +1,25 @@
+[Unit]
+Description=Harbor OS management service
+After=network-online.target local-fs.target
+Wants=network-online.target
+Requires=harbour-update-recover.service
+After=harbour-update-recover.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/harbor.conf
+ExecStartPre=/usr/local/sbin/harbor-init
+ExecStart=/usr/bin/python3 /opt/harbor/server.py
+WorkingDirectory=/opt/harbor
+Restart=on-failure
+RestartSec=3
+UMask=0077
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

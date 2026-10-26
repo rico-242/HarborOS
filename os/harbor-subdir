@@ -1,0 +1,19 @@
+#!/bin/sh
+# Optional installation in a directory on an existing ext4 filesystem.
+# Standard disk-image installations do not use this boot argument.
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in prereqs) prereqs; exit 0;; esac
+subdir=""
+for arg in $(cat /proc/cmdline); do
+  case "$arg" in harbor.subdir=*) subdir="${arg#harbor.subdir=}";; esac
+done
+[ -n "$subdir" ] || exit 0
+set -e
+case "$subdir" in harbor/rootfs) ;; *) echo 'Invalid Harbor root directory'; exit 1;; esac
+[ -x "${rootmnt}/$subdir/sbin/init" ] || exit 1
+mkdir -p /harbor-host
+mount -o move "$rootmnt" /harbor-host
+mount -o bind "/harbor-host/$subdir" "$rootmnt"
+mkdir -p "$rootmnt/mnt/harbor-host"
+mount -o move /harbor-host "$rootmnt/mnt/harbor-host"

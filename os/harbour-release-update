@@ -1,0 +1,8 @@
+#!/usr/bin/python3
+import os,sys
+os.umask(0o077)
+sys.path.insert(0,'/usr/local/lib/harbour-updater')
+from release_worker import execute,recover
+try:recover() if sys.argv[1]=='recover' else execute(sys.argv[1])
+except Exception as error:
+    print(str(error),file=sys.stderr);sys.exit(1)

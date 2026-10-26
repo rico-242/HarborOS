@@ -1,0 +1,14 @@
+[Unit]
+Description=Harbour OS local graphical installer
+After=local-fs.target
+ConditionKernelCommandLine=boot=live
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/sbin/harbor-installer-server
+Restart=on-failure
+RestartSec=2
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

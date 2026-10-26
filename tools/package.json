@@ -1,0 +1,5 @@
+{
+  "name": "harbor-development-tools",
+  "private": true,
+  "description": "Harbor development utilities. The SSH helper uses tools/requirements.txt."
+}

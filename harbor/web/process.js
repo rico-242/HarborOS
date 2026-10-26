@@ -1,0 +1,46 @@
+'use strict';
+let processJobs=[],processSelected=null,processTimer=null,processInitial=true,processFocus=null,processBusy=false;
+const processActive=job=>['queued','running'].includes(job.state);
+function resetProcesses(){clearTimeout(processTimer);$('#process-window').hidden=true;$('#account-menu').hidden=true;$('#account-menu-button').setAttribute('aria-expanded','false');processJobs=[];processSelected=null;processInitial=true;$('#task-count').hidden=true;}
+function processDuration(job){const end=job.finished?Date.parse(job.finished):Date.now(),start=Date.parse(job.started||job.created);if(!Number.isFinite(start))return '—';const seconds=Math.max(0,Math.floor((end-start)/1000));return seconds<60?seconds+'s':Math.floor(seconds/60)+'m '+seconds%60+'s';}
+function processIcon(job){if(job?.kind==='network')return icon('network');if(job?.kind==='release')return icon('snapshots');if(job?.kind==='storage')return icon('storage');const app=storeApps.find(app=>app.id===job?.target);return app?appImage(app):icon(job?.kind==='app'?'apps':'activity');}
+function acceptProcessJobs(jobs){
+  const changed=JSON.stringify(processJobs)!==JSON.stringify(jobs);
+  processJobs=jobs;
+  if(processInitial){jobs.filter(j=>!processActive(j)).forEach(j=>announcedJobs.add(j.id));processInitial=false;}
+  const count=jobs.filter(processActive).length;$('#task-count').hidden=!count;$('#task-count').textContent=count;document.querySelector('.task-control')?.classList.toggle('has-tasks',count>0);
+  if(changed&&!$('#process-window').hidden)renderProcess();
+  clearTimeout(processTimer);if(csrf&&count)processTimer=setTimeout(loadProcesses,1800);
+}
+async function loadProcesses(){if(!csrf||processBusy)return;processBusy=true;try{acceptProcessJobs(await api('/api/jobs'));$('#process-connection')?.remove();}catch(error){if(!$('#process-window').hidden&&!$('#process-connection'))$('#process-body').insertAdjacentHTML('beforeend',`<p class="process-connection" id="process-connection" role="status">${E(error.message)} Your task may still be running. Reopen Background tasks to reconnect.</p>`);if(csrf){clearTimeout(processTimer);processTimer=setTimeout(loadProcesses,4000);}}finally{processBusy=false;}}
+function openProcess(job){
+  if(job&&!processJobs.some(j=>j.id===job.id))processJobs.unshift(job);
+  processSelected=job?.id||null;processFocus=document.activeElement;$('#process-window').hidden=false;renderProcess();
+  requestAnimationFrame(()=>{if(!$('#modal').open)$('#process-window').focus({preventScroll:true});});loadProcesses();
+}
+function hideProcess(){const focused=$('#process-window').contains(document.activeElement);$('#process-window').hidden=true;if(focused&&processFocus?.isConnected)processFocus.focus({preventScroll:true});}
+function renderProcess(){
+  const job=processJobs.find(j=>j.id===processSelected);$('#process-glyph').innerHTML=processIcon(job);$('#process-caption').textContent=job?.kind==='storage'?'Storage setup':job?.kind==='app'?'Application progress':job?.kind==='network'?'Network change':job?.kind==='release'?'Harbour update':'Background tasks';
+  if(!job){
+    $('#process-body').innerHTML=`<div class="process-heading"><div><p class="process-eyebrow">YOUR HARBOUR</p><h2 id="process-title">Background tasks</h2></div><span class="process-count">${processJobs.filter(processActive).length} running</span></div><div class="process-task-list">${[...processJobs].sort((a,b)=>Number(processActive(b))-Number(processActive(a))||String(b.created||'').localeCompare(String(a.created||''))).map(j=>`<button data-action="process-open" data-id="${E(j.id)}"><span class="process-task-icon ${processActive(j)?'is-active':''}">${processIcon(j)}</span><span><strong>${E(j.title)}</strong><small>${E(j.stage||j.state)} · ${E(processDuration(j))}</small></span><span class="process-status ${E(j.state)}">${E(j.state==='completed'?'Complete':j.state==='failed'?'Needs attention':j.state==='queued'?'Queued':'Running')}</span><span class="process-next">›</span></button>`).join('')||'<div class="process-empty">No tasks yet.<p>App installations and drive setup will appear here.</p></div>'}</div><footer class="process-actions"><button class="button secondary" data-action="process-hide">Close</button></footer>`;return;
+  }
+  const active=processActive(job),failed=job.state==='failed',steps=job.steps||[],current=steps.length-1;
+  const title=job.phase==='rolled_back'?'Previous network restored':failed?'Operation stopped':job.state==='completed'?'All done':job.state==='queued'?'Waiting to start':job.stage||'Working on it';
+  $('#process-body').innerHTML=`<div class="process-heading"><div class="process-app-icon ${active?'is-active':''}">${processIcon(job)}</div><div><p class="process-eyebrow">${job.kind==='storage'?'STORAGE SETUP':job.kind==='app'?'APPLICATION':'SYSTEM TASK'}</p><h2 id="process-title">${E(job.title)}</h2><p class="process-subtitle">Started ${E(new Date(job.created||Date.now()).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}))} · <span data-process-duration>${E(processDuration(job))}</span></p></div></div><div class="process-state ${failed?'failed':active?'running':'completed'}"><span class="process-state-symbol">${active?'<span class="process-spinner"></span>':failed?'!':'✓'}</span><div><strong role="status">${E(title)}</strong><p>${E(failed?'Your task could not finish. Review the details below before trying again.':job.detail||'Your server is preparing this task.')}</p></div></div>${active?'<div class="process-track" role="status" aria-label="Operation in progress"><i></i></div>':''}<ol class="process-steps">${steps.map((step,i)=>`<li class="${i<current||!active&&!failed?'done':i===current&&failed?'failed':'current'}"><span>${i<current||!active&&!failed?'✓':i+1}</span><div><strong>${E(step.stage)}</strong><small>${E(step.detail)}</small></div><time>${E(new Date(step.time).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}))}</time></li>`).join('')}</ol>${failed?`<div class="process-error" role="alert"><strong>What happened</strong><pre>${E(job.error||'No additional details were reported.')}</pre></div>`:''}${job.kind==='storage'&&job.state==='completed'?'<p class="process-note">Your storage is available. RAID initialization may continue in the background; check Storage for its current status.</p>':''}${job.kind==='network'&&job.phase==='awaiting_confirmation'?`<div class="maintenance-network-actions"><p>Keep this connection within <strong data-network-countdown>${Math.max(0,Math.ceil(job.deadline-Date.now()/1000))}</strong> seconds, or Harbour restores the previous settings.</p><button class="button primary" data-action="network-keep" data-id="${E(job.id)}">Keep this connection</button><button class="button secondary" data-action="network-revert" data-id="${E(job.id)}">Revert now</button></div>`:''}<footer class="process-actions"><button class="text-button" data-action="process-list">All tasks</button><span>${active?'Your task continues in the background.':''}</span>${!active&&job.kind==='storage'?'<button class="button secondary" data-action="process-destination" data-destination="storage">View storage</button>':''}${!active&&job.kind==='app'?'<button class="button secondary" data-action="process-destination" data-destination="apps">View apps</button>':''}<button class="button ${active?'secondary':'primary'}" data-action="process-hide">${active?'Run in background':'Done'}</button></footer>`;
+}
+document.addEventListener('click',event=>{
+  const action=event.target.closest('[data-action]');
+  if(action?.dataset.action==='process-list'){openProcess();}
+  if(action?.dataset.action==='process-open'){const job=processJobs.find(j=>j.id===action.dataset.id);if(job)openProcess(job);else loadProcesses();}
+  if(action?.dataset.action==='process-hide')hideProcess();
+  if(action?.dataset.action==='process-destination'){hideProcess();navigate(action.dataset.destination);}
+  const account=$('#account-menu'),button=$('#account-menu-button');
+  if(event.target.closest('#account-menu-button')){account.hidden=!account.hidden;button.setAttribute('aria-expanded',String(!account.hidden));}
+  else if(!event.target.closest('#account-menu')||event.target.closest('#account-menu button')){account.hidden=true;button.setAttribute('aria-expanded','false');}
+});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#modal').open){if(!$('#process-window').hidden){hideProcess();event.preventDefault();}$('#account-menu').hidden=true;$('#account-menu-button').setAttribute('aria-expanded','false');}});
+$('#modal').addEventListener('close',()=>{if(!$('#process-window').hidden)$('#process-window').focus({preventScroll:true});});
+setInterval(()=>{if(!csrf){clearTimeout(processTimer);$('#process-window').hidden=true;processJobs=[];processInitial=true;return;}const job=processJobs.find(j=>j.id===processSelected);if(job&&processActive(job)&&!$('#process-window').hidden){const elapsed=$('[data-process-duration]');if(elapsed)elapsed.textContent=processDuration(job);}},1000);
+if(csrf)loadProcesses();
+
+setInterval(()=>{const job=processJobs.find(j=>j.id===processSelected),label=$('[data-network-countdown]');if(job&&label)label.textContent=Math.max(0,Math.ceil(job.deadline-Date.now()/1000));},1000);

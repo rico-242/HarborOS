@@ -1,0 +1,17 @@
+{
+  "iso_live_boot": "UEFI",
+  "installed_boot": [
+    "BIOS",
+    "UEFI"
+  ],
+  "version": "0.2.0",
+  "catalog": 181,
+  "catalog_revision": "7743473daff401172d9a155ce904953cda6145ae",
+  "raid": "RAID1",
+  "share": "Install-Test",
+  "app_install_stop_start": "Syncthing",
+  "passed": true,
+  "jbod": "Btrfs single-data profile, created and shared on two additional virtual disks",
+  "hybrid_usb_boot": "Legacy BIOS, read-only USB storage device, no destination disks attached",
+  "app_web_ui": "Syncthing HTTP 200 with application page after reboot"
+}

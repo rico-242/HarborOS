@@ -1,0 +1,8 @@
+#!/bin/sh
+# update-initramfs invokes this after successfully writing a kernel's initrd.
+set -eu
+version="$1"
+test -f "/boot/vmlinuz-$version" || exit 0
+test -f "/boot/initrd.img-$version" || exit 0
+ln -sfn "vmlinuz-$version" /boot/harbor-vmlinuz
+ln -sfn "initrd.img-$version" /boot/harbor-initrd

@@ -1,0 +1,9 @@
+# Dark desktop
+
+The October 25, 2026 interface replaces the green landscape desktop. The visual reference is the official ZimaOS dark dashboard at https://cdn.shopify.com/s/files/1/0549/4495/6614/files/25.1.png?v=1780738148 . Harbor independently implements its compact clock, circular CPU/RAM gauges, disk summary, network chart, search field, square app tiles, and charcoal surfaces, with green replacing blue. The wallpaper is original CSS geometry, and the icons are original inline SVG. This matches the dashboard arrangement; Harbor's existing Files, App Store, and Settings features remain its own implementation rather than complete ZimaOS feature parity.
+
+There are no marketing banners or floating dock on the desktop. Internal screens, sign-in, dialogs, tables, buttons, and navigation use the same black/white/green palette. A narrow browser places the app grid above the widgets. Desktop preferences use harbor.desktop.v2 so the rejected landscape preference cannot reappear. Widget settings offer dark waves or solid black, visibility toggles, and reset. Mouse drag and Alt+Left/Right retain app rearranging.
+
+CPU temperature comes from Linux coretemp. Upload/download rates use byte-counter differences on the default-route interface. The initial sample and unavailable sensors display a dash or an unavailable label. The chart uses actual in-session samples, without simulated history. Power usage is omitted because this NAS did not expose a readable counter.
+
+Validation: nine Python tests pass, including synthetic Linux network deltas, counter reset, and CPU temperature parsing; JavaScript syntax checked. The live HTTPS dashboard, app search, widget dialog, file listing, App Store, and system settings were checked in the browser. The prior UI and backend are backed up under /var/lib/harbor/ui-backups. The standalone installer and release source include this interface.

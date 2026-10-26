@@ -1,0 +1,10 @@
+[Unit]
+Description=Harbor OS trial boot recovery guard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/harbor-boot-guard
+
+[Install]
+WantedBy=multi-user.target

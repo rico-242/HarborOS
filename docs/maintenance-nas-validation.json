@@ -1,0 +1,11 @@
+{
+  "version": "0.4.0",
+  "signed_in_place_update": true,
+  "owner_preserved": true,
+  "storage_preserved": true,
+  "network_unchanged": true,
+  "ethernet_adapters": 1,
+  "bond_requires_second_adapter": true,
+  "repository": "",
+  "rebooted": false
+}

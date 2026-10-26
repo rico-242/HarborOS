@@ -1,0 +1,24 @@
+Window.SetBackgroundTopColor(0.035, 0.035, 0.035);
+Window.SetBackgroundBottomColor(0.035, 0.035, 0.035);
+logo_image = Image.Text("h.", 0.21, 0.84, 0.55, 1, "DejaVu Sans Bold 72");
+logo = Sprite(logo_image);
+logo.SetX(Window.GetWidth()/2 - logo_image.GetWidth()/2);
+logo.SetY(Window.GetHeight()/2 - 100);
+name_image = Image.Text("harbour OS", 0.94, 0.94, 0.94, 1, "DejaVu Sans 24");
+name = Sprite(name_image);
+name.SetX(Window.GetWidth()/2 - name_image.GetWidth()/2);
+name.SetY(Window.GetHeight()/2 + 20);
+dot_image = Image.Text("•", 0.21, 0.84, 0.55, 1, "DejaVu Sans 20");
+for (i = 0; i < 3; i++) {
+  dots[i] = Sprite(dot_image);
+  dots[i].SetX(Window.GetWidth()/2 - 28 + i*21);
+  dots[i].SetY(Window.GetHeight()/2 + 82);
+}
+frame = 0;
+fun refresh() {
+  global.frame += 0.08;
+  for (i = 0; i < 3; i++) {
+    global.dots[i].SetOpacity(0.25 + 0.75*(Math.Sin(global.frame-i*0.8)+1)/2);
+  }
+}
+Plymouth.SetRefreshFunction(refresh);

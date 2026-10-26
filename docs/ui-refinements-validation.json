@@ -1,0 +1,28 @@
+{
+  "actual_app": "Excalidraw",
+  "state": "completed",
+  "stages": [
+    "Preparing",
+    "Checking application",
+    "Validating configuration",
+    "Downloading images",
+    "Starting containers",
+    "Complete"
+  ],
+  "timing_fields": true,
+  "new_assets_http_200": true,
+  "raid_disks_changed": false,
+  "iso_version": "0.3.1",
+  "raw_usb_bios_boot": true,
+  "graphical_services_active": true,
+  "installer_ready": true,
+  "fresh_owner_state": true,
+  "linux_script_headers_valid": true,
+  "automated_tests_passed": 23,
+  "iso_file": "harbour-0.3.1-amd64.iso",
+  "iso_bytes": 979173376,
+  "iso_sha256": "7e558846f0d978e04e4454640f958b2f3e5dbf542ad7d711129f448c50a17e3d",
+  "download_checksum_verified": true,
+  "nas_failed_services": 0,
+  "nas_rebooted": false
+}

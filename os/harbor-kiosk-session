@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+xset s off
+xset -dpms
+xset s noblank
+openbox --config-file /etc/harbor/openbox.xml &
+directory=/run/user/$(id -u)/harbour-browser
+mkdir -p "$directory/Default"
+printf '{"credentials_enable_service":false,"profile":{"password_manager_enabled":false},"browser":{"check_default_browser":false}}' > "$directory/Default/Preferences"
+address=http://127.0.0.1:17080/
+if grep -qw boot=live /proc/cmdline; then address=http://127.0.0.1:17081/; fi
+until curl -fsS "${address}api/$(if grep -qw boot=live /proc/cmdline; then printf status; else printf health; fi)" >/dev/null; do sleep 1; done
+exec chromium --kiosk --no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-pinch --password-store=basic --user-data-dir="$directory" "$address"

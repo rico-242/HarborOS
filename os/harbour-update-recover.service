@@ -1,0 +1,13 @@
+[Unit]
+Description=Recover an interrupted Harbour release activation
+DefaultDependencies=no
+After=local-fs.target
+Before=harbor.service harbour-network-recover.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/harbour-release-update recover
+
+[Install]
+WantedBy=multi-user.target

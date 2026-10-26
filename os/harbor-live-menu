@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+if grep -qw 'harbor.install=1' /proc/cmdline; then
+  /usr/local/sbin/harbor-install || true
+fi
+while true; do
+  printf '\033[2J\033[H'
+  printf '\n  HARBOR OS 0.2.0 — LIVE / INSTALL\n\n'
+  printf '  Live mode runs in RAM. No disk is automatically installed or formatted.\n'
+  cat /run/harbor-console.txt 2>/dev/null || true
+  printf '\n  1  Install Harbor on a disk (erases the selected disk)\n'
+  printf '  2  Refresh this screen\n  3  Shut down\n  4  Open a live rescue shell\n\n  Choice: '
+  read -r choice || exit 0
+  case "$choice" in
+    1) /usr/local/sbin/harbor-install || true; printf '\nPress Enter to continue.'; read -r unused;;
+    2) :;;
+    3) systemctl poweroff;;
+    4) /bin/bash;;
+  esac
+done

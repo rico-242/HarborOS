@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+sleep 5
+message=/run/harbor-console.txt
+umask 077
+{
+  printf '\n\n  H A R B O R   O S\n  Your home, connected.\n\n'
+  printf '  Web console: https://harbor.local:8443\n'
+  hostname -I | tr ' ' '\n' | while read -r addr; do
+    case "$addr" in [0-9]*.*) printf '  Web console: https://%s:8443\n' "$addr";; esac
+  done
+  if [ ! -f /var/lib/harbor/admin.json ]; then
+    printf '\n  Create your first account on the graphical screen attached to this computer.\n'
+  else
+    printf '\n  Sign in with your Harbour owner account.\n'
+  fi
+  printf '\n  TLS certificate fingerprint:\n'
+  openssl x509 -in /var/lib/harbor/tls.crt -noout -fingerprint -sha256
+  printf '\n  SSH host key fingerprint:\n'
+  ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+  printf '\n'
+} > "$message"
+if [ ! -e /etc/systemd/system/display-manager.service ]; then cat "$message" > /dev/tty1; fi
+if [ -c /dev/ttyS0 ]; then cat "$message" > /dev/ttyS0; fi
