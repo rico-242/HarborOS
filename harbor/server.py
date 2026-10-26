@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.5.2'
+VERSION = '0.6.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -253,6 +253,12 @@ class Harbor:
                     info['healthy']=info.get('degraded','0')=='0' and info.get('array_state') not in ('inactive','clear')
                 else:
                     info['healthy']=info['mounted']
+        hybrid=self.storage_manager.hybrid_status()
+        if hybrid:
+            info.update(redundancy=hybrid['name'],healthy=bool(info['mounted']) and hybrid['healthy'],hybrid_arrays=hybrid['arrays'])
+            syncing=[a for a in hybrid['arrays'] if a.get('sync_action','idle')!='idle']
+            if syncing:info.update(sync_action='Synchronizing protected tiers',sync_completed='; '.join(a['path']+': '+a.get('sync_completed','') for a in syncing))
+        info['storage_operation_pending']=self.storage_manager.pending().exists()
         info['name']=self.config.get('storage',{}).get('name','Data volume')
         if info['mounted'] and self.config.get('storage',{}).get('level')=='linear':
             info['redundancy']='JBOD (Btrfs single)'
@@ -813,6 +819,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(self.app.app_list())
             if route == '/api/catalog':
                 return self.reply({k:v for k,v in CATALOG_INFO.items() if k!='apps'})
+            if route == '/api/storage/expansion':
+                return self.reply(self.app.storage_manager.expansion_info())
             if route == '/api/events':
                 return self.reply(self.app.events)
             if route == '/api/jobs':
@@ -1012,6 +1020,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':
             return self.reply(self.app.app_plan(data.get('id',''),data.get('options')))
+        if route == '/api/storage/expand-plan':
+            return self.reply(self.app.storage_manager.expand_plan(data))
+        if route == '/api/storage/expand':
+            return self.reply(self.app.storage_manager.expand(data),202)
         if route == '/api/storage/plan':
             return self.reply(self.app.storage_manager.plan(data))
         if route == '/api/storage/create':

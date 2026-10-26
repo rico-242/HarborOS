@@ -20,6 +20,11 @@ for asset in ('theme.js','experience.css','experience.js','wallpaper.svg','catal
 for asset in ('','install.js','theme.js','experience.css'):
  assert urllib.request.urlopen('http://127.0.0.1:17081/'+asset).status==200,asset
 assert hashlib.sha256(Path('/etc/harbor/update-public.pem').read_bytes()).hexdigest()==KEY
+import sys,shutil
+sys.path.insert(0,'/opt/harbor')
+from hybrid_layout import HYBRID_LEVELS
+assert set(HYBRID_LEVELS)=={'hybrid1','hybrid2'}
+assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs'))
 print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists()}))
 '''
 script='VERSION='+repr(version)+'\nKEY='+repr(__import__('hashlib').sha256((root/'os/release-public.pem').read_bytes()).hexdigest())+'\n'+script

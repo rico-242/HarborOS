@@ -48,6 +48,7 @@ class StorageTests(unittest.TestCase):
     def setUp(self):
         self.app=type('App',(),{})()
         self.app.demo=False
+        temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.app.state=Path(temporary.name)
         self.app.lock=threading.RLock()
         self.app.storage_info=lambda:{'mounted':False}
         self.app.job=lambda title,action,**metadata:action()
@@ -89,6 +90,12 @@ class StorageTests(unittest.TestCase):
             self.manager.create({'token':plan['token'],'confirmation':'Test','acknowledge':True})
         self.disks[0]['serial']='replaced-disk'
         with self.assertRaisesRegex(Error,'identities changed'):
+            self.manager.create({'token':plan['token'],'confirmation':'ERASE Test','acknowledge':True})
+
+    def test_old_creation_token_cannot_bypass_interrupted_operation_guard(self):
+        plan=self.plan()
+        self.manager.pending().write_text('{}')
+        with self.assertRaisesRegex(Error,'recovery'):
             self.manager.create({'token':plan['token'],'confirmation':'ERASE Test','acknowledge':True})
 
     def test_existing_storage_and_failed_health_rejected(self):

@@ -1,0 +1,13 @@
+{
+  "service_sandbox_verified": true,
+  "mixed_hybrid1": true,
+  "hybrid1_expansion_retained_data": true,
+  "one_drive_failure_read_and_scrub": true,
+  "mixed_hybrid2": true,
+  "hybrid2_expansion_retained_data": true,
+  "hybrid2_reboot_persistence": true,
+  "two_drive_failure_read_and_scrub": true,
+  "native_raid1_expansion_retained_data_and_profiles": true,
+  "degraded_reboot_persistence": true,
+  "native_raid1_expansion_reboot_persistence": true
+}

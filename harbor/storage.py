@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import secrets
 import time
+from hybrid_layout import HYBRID_LEVELS, layout
+from hybrid_storage import HybridStorage
 
 LEVELS = {
     'basic': {'name':'Basic','minimum':1,'maximum':1,'description':'One disk. No drive-failure protection.'},
@@ -16,6 +18,7 @@ LEVELS = {
     '6': {'name':'RAID 6','minimum':4,'maximum':24,'description':'Double parity. Survives two drive failures.'},
     '10': {'name':'RAID 10','minimum':4,'maximum':24,'description':'Striped mirrors. Requires an even number of disks.'},
 }
+LEVELS.update(HYBRID_LEVELS)
 
 
 def capacity(level, sizes):
@@ -24,6 +27,7 @@ def capacity(level, sizes):
     rules=LEVELS[level]
     if not rules['minimum'] <= len(sizes) <= rules['maximum'] or (level=='10' and len(sizes)%2):
         raise ValueError('The selected disk count does not fit this RAID level.')
+    if level in HYBRID_LEVELS:return layout(level,sizes)['capacity']
     smallest=min(sizes)
     return {'basic':smallest,'linear':sum(sizes),'0':smallest*len(sizes),'1':smallest,
             '5':smallest*(len(sizes)-1),'6':smallest*(len(sizes)-2),'10':smallest*(len(sizes)//2)}[level]
@@ -39,7 +43,7 @@ def identity(disk):
     return hashlib.sha256(json.dumps({k:disk.get(k) for k in ('path','size','serial','wwn','id')},sort_keys=True).encode()).hexdigest()
 
 
-class StorageManager:
+class StorageManager(HybridStorage):
     def __init__(self, app, run, error):
         self.app,self.run,self.error=app,run,error
         self.plans={}
@@ -109,6 +113,7 @@ class StorageManager:
 
     def plan(self,data):
         self.assert_empty()
+        self.check_pending()
         name=data.get('name','')
         if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,31}',name):
             raise self.error('Use a storage name with 1–32 letters, numbers, hyphens, or underscores.')
@@ -122,19 +127,22 @@ class StorageManager:
         self.plans[token]={'expires':time.monotonic()+300,'name':name,'level':level,'ids':[d['id'] for d in disks],
                            'identities':[identity(d) for d in disks]}
         return {'token':token,'name':name,'level':level,'disks':disks,'capacity':usable,'health_unknown':unknown,
-                'confirmation':'ERASE '+name,'warning':'All files and partitions on the selected disks will be permanently erased.'}
+                'confirmation':'ERASE '+name,'warning':'All files and partitions on the selected disks will be permanently erased.',
+                'layout':layout(level,[d['size'] for d in disks]) if level in HYBRID_LEVELS else None}
 
     def create(self,data):
         with self.app.lock:
             plan=self.plans.get(data.get('token',''))
-            if not plan or plan['expires']<time.monotonic():
+            if not plan or plan.get('kind')=='expand' or plan['expires']<time.monotonic():
                 raise self.error('The disk plan expired. Review the disks again.',409)
             if data.get('confirmation')!='ERASE '+plan['name'] or data.get('acknowledge') is not True:
                 raise self.error('Confirm erasure using the exact storage name.')
             plan=self.plans.pop(data['token'])
+        if plan['level'] in HYBRID_LEVELS:return self.create_hybrid(plan)
         def execute():
             self.app.job_progress('Checking disks', 'Rechecking disk identities, health and system-disk protection.')
             self.assert_empty()
+            self.check_pending()
             disks,_=self.selection(plan['ids'],plan['level'])
             if [identity(d) for d in disks]!=plan['identities']:
                 raise self.error('Disk identities changed. No disks were modified.',409)
