@@ -98,3 +98,5 @@ body[data-wallpaper=dark]:before{background:#040605 url("/wallpaper.svg") center
 .settings-profile strong{max-width:105px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.settings-content>h1,.files-brand{user-select:none}
 
 .featured-summary p{color:var(--muted)}
+
+.storage-details-card.pool-members .detail .button{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-raised);color:var(--text);font-size:12px;white-space:nowrap}.storage-details-card.pool-members .detail .button.primary{background:var(--accent);border-color:var(--accent);color:var(--ui-accent-ink)}.pool-members>p.small{margin:14px 20px;line-height:1.6}.pool-members .drive-actions{justify-content:flex-end}.pool-members .detail>span:first-child{min-width:0}.pool-members .detail small{font-size:11px;color:var(--muted)}@media(max-width:700px){.pool-members .detail{flex-wrap:wrap;gap:14px}.pool-members .drive-actions{justify-content:flex-start}}

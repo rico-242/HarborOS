@@ -2,13 +2,15 @@
 
 A small home NAS distribution with its own web interface, built on Debian 13. Inspired by the simplicity of ZimaOS and the storage-focused experience of TrueNAS. This is an independent implementation, not a TrueNAS fork.
 
-Version: **0.6.1, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The current live installer ISO is `harbour-0.6.1-amd64.iso`, available with its SHA-256 checksum on GitHub Releases; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.6.1-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
+Version: **0.7.0, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The current live installer ISO is `harbour-0.7.0-amd64.iso`, available with its SHA-256 checksum on GitHub Releases; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.7.0-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
 
 Jellyfin installation now omits unavailable optional acceleration devices and Raspberry Pi libraries, while retaining available GPU access.
 
 Installed apps now have confirmed, owner-only Uninstall controls in Settings and the App Store. App data, volumes and images are kept.
 
 Harbour Hybrid 1/2 support mixed-size new pools, one-/two-drive protection, and growth by adding protected groups. Native Btrfs RAID1 can also expand without recreation. See [hybrid storage and expansion](docs/HYBRID-STORAGE-0.6.md) for limits and recovery.
+
+Pool maintenance now includes Repair pool, copy-first Replace drive, confirmed Remove drive, resumable repair journals, and real browser-import progress. See [drive maintenance and imports](docs/DRIVE-MAINTENANCE-0.7.md).
 
 ## What works
 

@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.6.1'
+VERSION = '0.7.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -253,6 +253,9 @@ class Harbor:
                     info['healthy']=info.get('degraded','0')=='0' and info.get('array_state') not in ('inactive','clear')
                 else:
                     info['healthy']=info['mounted']
+                    if info['mounted'] and fs['fstype']=='btrfs':
+                        members=run('btrfs','filesystem','show','--raw',str(self.storage),check=False)
+                        if members.returncode or re.search(r'\bmissing\b',members.stdout,re.I):info['healthy']=False
         hybrid=self.storage_manager.hybrid_status()
         if hybrid:
             info.update(redundancy=hybrid['name'],healthy=bool(info['mounted']) and hybrid['healthy'],hybrid_arrays=hybrid['arrays'])
@@ -260,6 +263,7 @@ class Harbor:
             if syncing:info.update(sync_action='Synchronizing protected tiers',sync_completed='; '.join(a['path']+': '+a.get('sync_completed','') for a in syncing))
         info['storage_operation_pending']=self.storage_manager.recovery_pending()
         info['name']=self.config.get('storage',{}).get('name','Data volume')
+        info['configured']=bool(self.config.get('storage',{}).get('uuid'))
         if info['mounted'] and self.config.get('storage',{}).get('level')=='linear':
             info['redundancy']='JBOD (Btrfs single)'
         return info
@@ -500,7 +504,14 @@ class Harbor:
             if value is None:return
             step={'stage':stage,'detail':detail,'time':datetime.now(timezone.utc).isoformat()}
             value['stage']=stage;value['detail']=detail
-            value['steps']=(value.get('steps',[])+[step])[-30:]
+            prior=value.get('steps',[])
+            if prior and prior[-1]['stage']==stage:
+                prior[-1]['detail']=detail
+            else:prior=(prior+[step])[-30:]
+            value['steps']=prior
+            count=re.search(r'(\d+)\s*/\s*(\d+)',detail) if value.get('kind')=='storage' else None
+            percent=re.search(r'(\d+(?:\.\d+)?)%',detail) if value.get('kind')=='storage' else None
+            value['progress']=min(100,100*int(count[1])/int(count[2])) if count and int(count[2]) else min(100,float(percent[1])) if percent else None
 
     def app_list(self):
         containers = {}
@@ -785,6 +796,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(self.app.summary())
             if route == '/api/disks':
                 return self.reply(self.app.disks())
+            if route == '/api/storage/members':
+                return self.reply(self.app.storage_manager.lifecycle_info())
             if route == '/api/storage/disks':
                 return self.reply({'disks':self.app.storage_manager.inventory(),'levels':LEVELS,'live':os.getenv('HARBOR_LIVE')=='1'})
             if route == '/api/shares':
@@ -872,6 +885,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             raise APIError('Endpoint not found.', 404)
         static = {'/': 'index.html', '/app.js': 'app.js', '/onboarding.js':'onboarding.js','/desktop.js':'desktop.js','/desktop.css':'desktop.css','/features.js':'features.js', '/style.css': 'style.css', '/favicon.svg': 'favicon.svg'}
+        static['/transfers.js']='transfers.js'
+        static['/drives.js']='drives.js'
         static.update({'/process.js':'process.js','/widgets.js':'widgets.js','/refinements.css':'refinements.css'})
         static.update({'/maintenance.js':'maintenance.js','/maintenance.css':'maintenance.css','/theme.js':'theme.js','/experience.js':'experience.js','/experience.css':'experience.css','/wallpaper.svg':'wallpaper.svg'})
         if route.startswith('/catalog/icons/'):
@@ -1020,6 +1035,16 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':
             return self.reply(self.app.app_plan(data.get('id',''),data.get('options')))
+        if route == '/api/storage/member-resume':
+            return self.reply(self.app.storage_manager.lifecycle_resume(data),202)
+        if route == '/api/storage/checkpoint':
+            return self.reply(self.app.storage_manager.lifecycle_checkpoint())
+        if route == '/api/storage/member-plan':
+            return self.reply(self.app.storage_manager.lifecycle_plan(data))
+        if route == '/api/storage/recover-mount':
+            return self.reply(self.app.storage_manager.recover_mount(data))
+        if route == '/api/storage/member-action':
+            return self.reply(self.app.storage_manager.lifecycle_action(data),202)
         if route == '/api/storage/expand-plan':
             return self.reply(self.app.storage_manager.expand_plan(data))
         if route == '/api/storage/expand':

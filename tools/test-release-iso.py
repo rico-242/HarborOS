@@ -23,6 +23,7 @@ assert hashlib.sha256(Path('/etc/harbor/update-public.pem').read_bytes()).hexdig
 import sys,shutil
 sys.path.insert(0,'/opt/harbor')
 from hybrid_layout import HYBRID_LEVELS
+from drive_lifecycle import DriveLifecycle
 assert set(HYBRID_LEVELS)=={'hybrid1','hybrid2'}
 assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs'))
 print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists()}))

@@ -1,0 +1,19 @@
+{
+  "native_connected_replacement": true,
+  "native_evacuate": true,
+  "unsafe_mirror_removal_rejected": true,
+  "cold_missing_mirror_repaired": true,
+  "hybrid2_copy_first": true,
+  "hybrid2_planned_detach": true,
+  "hybrid2_two_missing_repaired": true,
+  "slot_order_guard": true,
+  "journal_resume": true,
+  "data_hash_retained": true,
+  "service_sandbox_verified": true,
+  "hybrid1_multi_tier_replacement": true,
+  "hybrid1_detach_repair": true,
+  "standard_md_mirror_replacement": true,
+  "standard_md_detach_repair": true,
+  "repaired_pool_reboot_persistence": true,
+  "browser_import_128mib_hash_verified": true
+}

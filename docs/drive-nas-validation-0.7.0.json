@@ -1,0 +1,14 @@
+{
+  "version": "0.7.0",
+  "signed_update_installed": true,
+  "installed_files_match_signed_manifest": true,
+  "owner_account_preserved": true,
+  "network_configuration_preserved": true,
+  "physical_pool_source_preserved": true,
+  "two_native_mirror_members_healthy": true,
+  "pool_member_controls_visible": true,
+  "no_unused_spare_state_verified": true,
+  "no_physical_disk_operation_journal": true,
+  "all_appliance_services_active": true,
+  "test_vm_stopped": true
+}

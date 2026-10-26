@@ -46,7 +46,7 @@ async function waitFileJob(job){for(let i=0;i<900;i++){const found=(await api('/
 async function uploadFiles(files){
   if(!fileWritable||fileArea!=='shares')throw new Error('Choose a writable shared folder first.');
   const destination=filePath;
-  for(const file of files){if(file.size>1024**3)throw new Error('Use SMB to transfer files larger than 1 GB.');toast('Uploading '+file.name+'…');await api('/api/upload?path='+encodeURIComponent(destination)+'&name='+encodeURIComponent(file.name),undefined,{method:'POST',body:file,headers:{'Content-Type':'application/octet-stream'}});}
+  await transferFiles([...files],destination);
   toast(files.length+' file'+(files.length===1?'':'s')+' uploaded.');if(route==='files'&&filePath===destination)await navigate('files');
 }
 function initFiles(){

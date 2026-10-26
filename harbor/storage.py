@@ -8,6 +8,7 @@ import secrets
 import time
 from hybrid_layout import HYBRID_LEVELS, layout
 from hybrid_storage import HybridStorage
+from drive_lifecycle import DriveLifecycle
 
 LEVELS = {
     'basic': {'name':'Basic','minimum':1,'maximum':1,'description':'One disk. No drive-failure protection.'},
@@ -43,7 +44,7 @@ def identity(disk):
     return hashlib.sha256(json.dumps({k:disk.get(k) for k in ('path','size','serial','wwn','id')},sort_keys=True).encode()).hexdigest()
 
 
-class StorageManager(HybridStorage):
+class StorageManager(HybridStorage,DriveLifecycle):
     def __init__(self, app, run, error):
         self.app,self.run,self.error=app,run,error
         self.plans={}
@@ -70,7 +71,10 @@ class StorageManager(HybridStorage):
                 mounted=mounted or any(n.get('fstype')=='btrfs' for n in nodes)
             held=any(any((Path('/sys/class/block')/Path(n['path']).name/'holders').glob('*')) for n in nodes)
             stable=links.get(disk['path'])
+            recorded=self.app.config.get('storage',{}).get('disks',[])
+            reserved=any(str(Path(member).resolve())==disk['path'] for member in recorded)
             reason='Mounted disk, operating system, or active storage' if mounted or held else 'Read-only disk' if disk.get('ro') else 'No stable disk identifier' if not stable else ''
+            if not reason and reserved:reason='Recorded pool member — use Repair pool or Replace drive'
             result.append({'id':stable or disk['path'],'path':disk['path'],'size':disk['size'],
                 'serial':str(disk.get('serial') or ''),'wwn':str(disk.get('wwn') or ''),'model':str(disk.get('model') or '').strip(),
                 'eligible':not reason,'reason':reason,'existing_data':any(n.get('fstype') for n in nodes)})
@@ -81,6 +85,8 @@ class StorageManager(HybridStorage):
             raise self.error('Install Harbor on a system disk before creating storage.',409)
         if self.app.storage_info()['mounted']:
             raise self.error('The primary data volume already exists. Existing storage is protected.',409)
+        if self.app.config.get('storage',{}).get('uuid'):
+            raise self.error('An existing pool is recorded but unavailable. Use Repair pool; do not create storage over its surviving disks.',409)
 
     def selection(self, ids, level):
         if not isinstance(ids,list) or not all(isinstance(i,str) for i in ids) or len(ids)!=len(set(ids)):

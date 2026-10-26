@@ -48,6 +48,7 @@ class StorageTests(unittest.TestCase):
     def setUp(self):
         self.app=type('App',(),{})()
         self.app.demo=False
+        self.app.config={}
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup);self.app.state=Path(temporary.name)
         self.app.lock=threading.RLock()
         self.app.storage_info=lambda:{'mounted':False}
