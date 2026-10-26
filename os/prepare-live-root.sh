@@ -21,7 +21,7 @@ test ! -f "$target/var/lib/harbor/admin.json"
 mount --bind /dev "$target/dev"
 mount --bind /dev/pts "$target/dev/pts"
 mount -t proc proc "$target/proc"
-mount -t sysfs sysfs "$target/sys"
+mount --rbind /sys "$target/sys"
 cleanup() { for path in "$target/sys" "$target/proc" "$target/dev"; do mount --make-rslave "$path"; umount -R "$path"; done; }
 trap cleanup EXIT
 rm -f "$target/etc/resolv.conf"

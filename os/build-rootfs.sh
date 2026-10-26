@@ -6,12 +6,13 @@ SOURCE=${HARBOR_SOURCE:-/source}
 if [ ! -f "$TARGET/etc/debian_version" ]; then
   debootstrap --variant=minbase --include=ca-certificates trixie "$TARGET" https://deb.debian.org/debian
 fi
-cleanup() { umount "$TARGET/dev/pts" "$TARGET/dev" "$TARGET/proc" "$TARGET/sys" 2>/dev/null || true; }
+cleanup() { for name in sys proc dev; do if mountpoint -q "$TARGET/$name"; then mount --make-rslave "$TARGET/$name"; umount -R "$TARGET/$name"; fi; done; }
 trap cleanup EXIT
 mountpoint -q "$TARGET/dev" || mount --bind /dev "$TARGET/dev"
 mountpoint -q "$TARGET/dev/pts" || mount --bind /dev/pts "$TARGET/dev/pts"
 mountpoint -q "$TARGET/proc" || mount -t proc proc "$TARGET/proc"
-mountpoint -q "$TARGET/sys" || mount -t sysfs sysfs "$TARGET/sys"
+mountpoint -q "$TARGET/sys" || mount --rbind /sys "$TARGET/sys"
+for name in dev proc sys; do mount --make-rslave "$TARGET/$name"; done
 rm -f "$TARGET/etc/resolv.conf"
 cp -L /etc/resolv.conf "$TARGET/etc/resolv.conf"
 cat > "$TARGET/usr/sbin/policy-rc.d" <<'EOF'

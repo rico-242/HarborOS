@@ -5,7 +5,7 @@ test -f "$work/root-ready"
 test ! -f "$target/var/lib/harbor/admin.json"
 for name in dev proc sys; do
   if ! mountpoint -q "$target/$name"; then
-    case "$name" in dev) mount --rbind /dev "$target/dev";; proc) mount -t proc proc "$target/proc";; sys) mount -t sysfs sysfs "$target/sys";; esac
+    case "$name" in dev) mount --rbind /dev "$target/dev";; proc) mount -t proc proc "$target/proc";; sys) mount --rbind /sys "$target/sys";; esac
   fi
   mount --make-rslave "$target/$name"
 done

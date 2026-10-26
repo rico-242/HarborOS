@@ -45,7 +45,7 @@ ln -sfn /run/systemd/resolve/stub-resolv.conf "$target/etc/resolv.conf"
 rm -f "$target"/etc/ssh/ssh_host_* "$target"/var/lib/harbor/tls.key "$target"/var/lib/harbor/tls.crt "$target"/var/lib/harbor/setup-token
 printf '' > "$target/etc/machine-id"
 for name in dev proc sys; do
-  case "$name" in dev) mount --rbind /dev "$target/dev";; proc) mount -t proc proc "$target/proc";; sys) mount -t sysfs sysfs "$target/sys";; esac
+  case "$name" in dev) mount --rbind /dev "$target/dev";; proc) mount -t proc proc "$target/proc";; sys) mount --rbind /sys "$target/sys";; esac
   mount --make-rslave "$target/$name"
 done
 cleanup() { for name in sys proc dev; do if mountpoint -q "$target/$name"; then umount -R "$target/$name"; fi; done; }
