@@ -42,6 +42,7 @@ def agent(client,command,data=None,stream=False):
   lines.append(line)
   if stream:print(line.rstrip(),flush=True)
  errors=err.read().decode();code=out.channel.recv_exit_status()
+ if not lines and not errors:raise EOFError('SSH closed before the command returned a result.')
  if code:raise RuntimeError(errors+''.join(lines))
  return json.loads(lines[-1])
 
@@ -50,10 +51,12 @@ def wait_connection(host,key,record,timeout=240,phase=None):
  while time.monotonic()<deadline:
   try:
    client=recovery_connection(host,key,record['server_key'])
-   if phase and agent(client,'status')['phase']!=phase:client.close();time.sleep(2);continue
+   if phase and agent(client,'status')['phase']!=phase:client.close();time.sleep(15);continue
    return client
   except (paramiko.BadHostKeyException,paramiko.AuthenticationException):raise RuntimeError('The NAS returned with another OS identity or rejected the recovery key. No install command was sent.') from None
-  except (OSError,paramiko.SSHException):time.sleep(15)
+  except (EOFError,OSError,paramiko.SSHException):
+   if 'client' in locals():client.close()
+   time.sleep(15)
  raise RuntimeError('Recovery SSH did not become available. No install command was sent.')
 
 def forward_setup(client,port=17080,duration=3600):
