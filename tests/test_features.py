@@ -116,12 +116,14 @@ class StorageTests(unittest.TestCase):
         with self.assertRaisesRegex(Error,'recovery'):
             self.manager.create({'token':plan['token'],'confirmation':'ERASE Test','acknowledge':True})
 
-    def test_existing_storage_and_failed_health_rejected(self):
+    def test_existing_storage_rejected_and_failed_health_advisory(self):
         self.app.storage_info=lambda:{'mounted':True}
         with self.assertRaisesRegex(Error,'already exists'):self.plan()
         self.app.storage_info=lambda:{'mounted':False}
         self.manager.run=lambda *args,**kwargs:type('Result',(),{'stdout':'{"smart_status":{"passed":false}}'})()
-        with self.assertRaisesRegex(Error,'failing health'):self.plan()
+        plan=self.plan()
+        self.assertEqual(len(plan['health_warnings']),2)
+        self.assertEqual(plan['disks'][0]['health'],'failing')
 
 
 if __name__=='__main__':unittest.main()

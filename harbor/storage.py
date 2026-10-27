@@ -10,6 +10,7 @@ from hybrid_layout import HYBRID_LEVELS, layout
 from hybrid_storage import HybridStorage
 from drive_lifecycle import DriveLifecycle
 from disk_wipe import DiskWipe
+from drive_health import DriveHealth
 
 LEVELS = {
     'basic': {'name':'Basic','minimum':1,'maximum':1,'description':'One disk. No drive-failure protection.'},
@@ -45,10 +46,11 @@ def identity(disk):
     return hashlib.sha256(json.dumps({k:disk.get(k) for k in ('path','size','serial','wwn','id')},sort_keys=True).encode()).hexdigest()
 
 
-class StorageManager(HybridStorage,DriveLifecycle,DiskWipe):
+class StorageManager(HybridStorage,DriveLifecycle,DiskWipe,DriveHealth):
     def __init__(self, app, run, error):
         self.app,self.run,self.error=app,run,error
         self.plans={}
+        self.init_health()
 
     def inventory(self):
         if self.app.demo:
@@ -83,7 +85,7 @@ class StorageManager(HybridStorage,DriveLifecycle,DiskWipe):
             result.append({'id':stable or disk['path'],'path':disk['path'],'size':disk['size'],
                 'serial':str(disk.get('serial') or ''),'wwn':str(disk.get('wwn') or ''),'model':str(disk.get('model') or '').strip(),
                 'eligible':not reason,'reason':reason,'existing_data':any(n.get('fstype') for n in nodes)})
-        return result
+        return self.cached_health(result)
 
     def assert_empty(self):
         if self.app.demo or os.getenv('HARBOR_LIVE')=='1':
@@ -106,22 +108,6 @@ class StorageManager(HybridStorage,DriveLifecycle,DiskWipe):
             raise self.error(str(error))
         return disks,usable
 
-    def health(self, disks):
-        unknown=[]
-        for disk in disks:
-            response=self.run('smartctl','-H','-A','-j',disk['id'],timeout=20,check=False)
-            try:
-                report=json.loads(response.stdout)
-            except ValueError:
-                report={}
-            attributes=report.get('ata_smart_attributes',{}).get('table',[])
-            bad=any(a.get('id') in (197,198) and a.get('raw',{}).get('value',0)>0 for a in attributes)
-            if bad or report.get('smart_status',{}).get('passed') is False or report.get('nvme_smart_health_information_log',{}).get('critical_warning',0):
-                raise self.error('Disk '+disk['serial']+' reports failing health or unreadable sectors. Replace it.',409)
-            if 'smart_status' not in report:
-                unknown.append(disk['id'])
-        return unknown
-
     def plan(self,data):
         self.assert_empty()
         self.check_pending()
@@ -137,7 +123,7 @@ class StorageManager(HybridStorage,DriveLifecycle,DiskWipe):
             self.plans.pop(next(iter(self.plans)))
         self.plans[token]={'expires':time.monotonic()+300,'name':name,'level':level,'ids':[d['id'] for d in disks],
                            'identities':[identity(d) for d in disks]}
-        return {'token':token,'name':name,'level':level,'disks':disks,'capacity':usable,'health_unknown':unknown,
+        return {'token':token,'name':name,'level':level,'disks':disks,'capacity':usable,'health_unknown':unknown,'health_warnings':getattr(unknown,'warnings',[]),
                 'confirmation':'ERASE '+name,'warning':'All files and partitions on the selected disks will be permanently erased.',
                 'layout':layout(level,[d['size'] for d in disks]) if level in HYBRID_LEVELS else None}
 

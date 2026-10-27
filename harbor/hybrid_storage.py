@@ -194,7 +194,7 @@ class HybridStorage:
   if len(self.plans)>=20:raise self.error('Too many outstanding storage plans.',409)
   self.plans[token]={'kind':'expand','expires':time.monotonic()+300,'name':state['name'],'selection_level':level,'mode':state['mode'],
    'uuid':state['uuid'],'ids':[d['id'] for d in disks],'identities':[identity(d) for d in disks]}
-  return {'token':token,'name':state['name'],'mode':state['mode'],'disks':disks,'capacity_gain':gain,'layout':result,'health_unknown':unknown,
+  return {'token':token,'name':state['name'],'mode':state['mode'],'disks':disks,'capacity_gain':gain,'layout':result,'health_unknown':unknown,'health_warnings':getattr(unknown,'warnings',[]),
    'confirmation':'EXPAND '+state['name'],'warning':'Only the selected NEW disks will be erased. Existing pool data is retained. Keep an independent backup.'}
  def expand(self,data):
   with self.app.lock:

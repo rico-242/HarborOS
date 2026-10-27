@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.10.2'
+VERSION = '0.11.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
@@ -265,6 +265,7 @@ class Harbor:
             info.update(redundancy=hybrid['name'],healthy=bool(info['mounted']) and hybrid['healthy'],hybrid_arrays=hybrid['arrays'])
             syncing=[a for a in hybrid['arrays'] if a.get('sync_action','idle')!='idle']
             if syncing:info.update(sync_action='Synchronizing protected tiers',sync_completed='; '.join(a['path']+': '+a.get('sync_completed','') for a in syncing))
+        if not self.demo:info.update(self.storage_manager.pool_health())
         info['storage_operation_pending']=self.storage_manager.recovery_pending()
         info['name']=self.config.get('storage',{}).get('name','Data volume')
         info['configured']=bool(self.config.get('storage',{}).get('uuid'))
@@ -1085,10 +1086,10 @@ class Handler(BaseHTTPRequestHandler):
             result = run('smartctl', '-H', '-A', '-j', path, timeout=30, check=False)
             try:
                 report = json.loads(result.stdout)
-                attributes = report.get('ata_smart_attributes', {}).get('table', [])
-                bad_sectors = any(a.get('id') in (197, 198) and a.get('raw', {}).get('value', 0) > 0 for a in attributes)
-                if bad_sectors or report.get('smart_status', {}).get('passed') is False:
-                    report['harbor_assessment'] = 'This drive reports a health failure or unreadable sectors. Do not add it to a storage pool; replace it.'
+                from drive_health import assessment
+                report.update(assessment(report))
+                if report['health']=='failing':
+                    report['harbor_assessment'] = 'Failing drive: '+ '; '.join(report['health_reasons']) + '. Pool use is allowed after reviewing this warning. Back up your data and replace the drive promptly.'
                 return self.reply(report)
             except ValueError:
                 raise APIError('SMART data is unavailable for this disk.', 409)

@@ -117,6 +117,10 @@ class DriveLifecycle:
  def lifecycle_info(self):
   try:
    state=self.lifecycle_state();state.pop('arrays',None)
+   inventory={d['id']:d for d in self.inventory()}
+   for member in state['members']:
+    disk=inventory.get(member.get('disk_id'),{})
+    member.update(health=disk.get('health','unknown'),health_reasons=disk.get('health_reasons',[]))
    return dict(state,supported=True,pending=self.pending().exists())
   except Exception as error:return dict(supported=False,reason=str(error),members=[])
 
@@ -173,7 +177,7 @@ class DriveLifecycle:
   elif state['mode'].startswith('md-'):plan['old_arrays']=copy.deepcopy(state['arrays'])
   self.plans[token]=plan
   warning=('Only the replacement disk will be erased. Keep the old disk connected until completion.' if target else 'Files will be evacuated before this disk is released.' if state['mode']=='native-raid1' else 'This disk will be detached from every tier. Protection is reduced until you install a replacement and repair the pool. This does not shrink the pool.')
-  return dict(token=token,member=member,target=target,confirmation=confirmation,warning=warning,health_unknown=unknown)
+  return dict(token=token,member=member,target=target,confirmation=confirmation,warning=warning,health_unknown=unknown,health_warnings=getattr(unknown,'warnings',[]))
 
  def lifecycle_action(self,data):
   with self.app.lock:

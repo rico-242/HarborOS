@@ -2,7 +2,7 @@
 
 A small home NAS distribution with its own web interface, built on Debian 13. Inspired by the simplicity of ZimaOS and the storage-focused experience of TrueNAS. This is an independent implementation, not a TrueNAS fork.
 
-Version: **0.10.2, experimental**. Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The current live installer ISO is `harbour-0.10.2-amd64.iso`, available with its SHA-256 checksum on GitHub Releases; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.10.2-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
+Version: **0.11.0, experimental**. Failing drives remain selectable with SMART warnings, explicit failing-drive labels, and pool health-risk notices; see [drive health warnings](docs/DRIVE-HEALTH-0.11.md). Install signed Harbour releases in place without reinstalling an ISO. Read the [update and Ethernet bonding guide](docs/UPDATES-AND-BONDING-0.4.md), [desktop refinements](docs/UI-REFINEMENTS-0.3.1.md), and [feature comparison](docs/RELEASE-0.3.md). The current live installer ISO is `harbour-0.11.0-amd64.iso`, available with its SHA-256 checksum on GitHub Releases; older installations need a one-time updater bridge. The current signed bundle is `dist/harbour-0.11.0-amd64.harbour-update`. See [GitHub updates](docs/GITHUB-UPDATES-0.4.1.md) and [GitHub Releases](https://github.com/rico-242/HarborOS/releases). This release does not claim complete ZimaOS feature or pixel parity.
 
 Jellyfin installation now omits unavailable optional acceleration devices and Raspberry Pi libraries, while retaining available GPU access.
 
@@ -12,7 +12,7 @@ Harbour Hybrid 1/2 support mixed-size new pools, one-/two-drive protection, and 
 
 Pool maintenance now includes Repair pool, copy-first Replace drive, confirmed Remove drive, resumable repair journals, and real browser-import progress. See [drive maintenance and imports](docs/DRIVE-MAINTENANCE-0.7.md).
 
-System SSD files, clearer light/dark visuals and signed RAM-based recovery installation are available in 0.10.2. See [SSD files and reinstalling](docs/SSD-AND-REINSTALL-0.8.md).
+System SSD files, clearer light/dark visuals and signed RAM-based recovery installation are available in 0.11.0. See [SSD files and reinstalling](docs/SSD-AND-REINSTALL-0.8.md).
 
 ## What works
 
@@ -100,4 +100,4 @@ Remote clean installation: [procedure and limitations](docs/REMOTE-INSTALL-0.9.m
 
 Non-pool drive wiping: [owner-confirmed quick wipe](docs/DISK-WIPE-0.10.md), available regardless of SMART health.
 
-AI app startup fixes: [AnythingLLM storage ownership and OpenClaw setup-container status](docs/AI-APP-FIXES-0.10.2.md).
+AI app startup fixes: [AnythingLLM storage ownership and OpenClaw setup-container status](docs/AI-APP-FIXES-0.11.0.md).
