@@ -1,0 +1,17 @@
+# App configuration and connected filesystems — Harbour 0.12.0
+
+Applications and their managed configuration default to the OS drive: `/srv/harbor/apps` for app data, `/var/lib/harbor/compose` for container definitions, and Docker's normal `/var/lib/docker` for images and named volumes. The application checks that its app and configuration roots are on the OS filesystem and are not symlink redirects. Existing custom layouts on another filesystem are refused for new app installs/settings changes rather than silently moving data.
+
+Apps can now be installed before a data pool exists. Shared content defaults to the existing pool when mounted; otherwise it uses the system SSD's dedicated data area. Existing app mounts are not rewritten when a pool is subsequently created. Media and shared user files remain distinct from app configuration.
+
+Use **Settings → Apps → Settings**, **App Store → installed app → Settings**, or the app details window. The editor shows the storage location, Compose JSON, and supported UTF-8 configuration files under the app's own data folder. Ports, environment variables, volume mappings and other image-based Compose settings can be edited. Database-backed settings must be changed in the app itself. External includes/secrets files and source builds are not supported by this editor.
+
+Only the owner can open or save configuration; it may contain secrets. Saving requires `APPLY app-id`, checks the revision, validates Compose, and recreates the app. A failed apply restores the original file and attempts to restart the previous configuration. This is configuration rollback, not a rollback of application database migrations. Existing file ownership/mode are preserved. No installed app settings are changed merely by installing this release.
+
+Use **Files → Connected disks** or **Storage → Connected filesystems** to detect and explicitly open standalone volumes read-only. Supported readers: FAT/FAT32, exFAT, NTFS, ext2/3/4, Btrfs, XFS, F2FS, HFS/HFS+, ISO9660, UDF and experimental APFS (choose volume number). Signed Debian reader packages are included in the ISO; upgraded installations can install them using the reader-install button. Mounts use read-only, nodev, nosuid and noexec flags; journal/log replay is disabled where appropriate. Unmount/eject is available. No disk is formatted, repaired, or mounted automatically.
+
+System disks, current pool disks, active arrays, swap and other mounted disks remain protected. RAID-member partitions, multi-device Btrfs, ZFS pools and encrypted/LUKS/BitLocker volumes require a separate pool import or unlock workflow and are detected without automatically importing/unlocking them. APFS reading is limited by libfsapfs: some compression formats, Fusion drives, snapshots and T2 encryption are unsupported. Never describe this as support for every filesystem variant.
+
+Primary references: [Debian filesystem tools](https://www.debian.org/doc/manuals/debian-reference/ch09), [APFS reader](https://packages.debian.org/trixie/libfsapfs-utils), [APFS supported features](https://github.com/libyal/libfsapfs/wiki/), [APFS mounting](https://github.com/libyal/libfsapfs/wiki/Mounting).
+
+Validation includes 156 regression tests, JavaScript syntax checks, app-config rollback tests, traversal/protected-volume tests, and real read-only filesystem tests using disposable loop images for ext4, FAT, exFAT, NTFS, Btrfs, XFS and F2FS. BIOS/UEFI ISO acceptance runs those loop tests too. No physical data disks are used as test fixtures.

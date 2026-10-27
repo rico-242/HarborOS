@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.11.1'
+VERSION = '0.12.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
@@ -150,6 +150,10 @@ class Harbor:
         self.releases=Releases(self,run,APIError,atomic_json,VERSION)
         from recovery import Recovery
         self.recovery=Recovery(self,run,APIError,VERSION)
+        from appsettings import AppSettings
+        from externaldrives import ExternalDrives
+        self.app_settings=AppSettings(self,run,APIError,atomic_json)
+        self.external_drives=ExternalDrives(self,run,APIError)
         self.archive_slots=threading.BoundedSemaphore(2)
         if self.demo:
             (self.storage / 'shares').mkdir(exist_ok=True)
@@ -544,7 +548,11 @@ class Harbor:
             account=pwd.getpwnam(self.admin['username'])
             uid,gid=account.pw_uid,account.pw_gid
         try:
-            plan=prepare_app(ident,self.apps,self.storage,uid,gid,options)
+            self.app_settings.system_location(True)
+            media=self.storage if self.storage_info()['mounted'] else self.system_files.storage
+            plan=prepare_app(ident,self.apps,media,uid,gid,options)
+            plan['media_root']=str(media)
+            plan['app_location']=str(self.apps/ident)
         except (ValueError, TypeError, KeyError) as error:
             raise APIError(str(error),409)
         return dict(plan, app=public_item(OFFICIAL[ident]), detail=OFFICIAL[ident].get('detail',''))
@@ -585,9 +593,9 @@ class Harbor:
                 if action=='install':
                     if config.exists():
                         raise APIError('This application is already configured. Use Start.',409)
-                    self.require_storage()
+                    self.app_settings.system_location(True)
                     folder.mkdir(parents=True,exist_ok=True)
-                    provision_app_mounts(ident,plan['compose'],self.apps,self.storage)
+                    provision_app_mounts(ident,plan['compose'],self.apps,Path(plan['media_root']))
                     atomic_json(config,plan['compose'])
                     try:
                         self.job_progress('Validating configuration', 'Checking the official app definition and your settings.')
@@ -745,11 +753,11 @@ class Handler(BaseHTTPRequestHandler):
             raise APIError('The upload was interrupted.')
         return body
 
-    def json_body(self):
+    def json_body(self,limit=32768):
         if self.headers.get_content_type() != 'application/json':
             raise APIError('Expected a JSON request.', 415)
         try:
-            data = json.loads(self.body())
+            data = json.loads(self.body(limit))
         except (ValueError, UnicodeDecodeError):
             raise APIError('Invalid JSON.')
         if not isinstance(data, dict):
@@ -798,6 +806,21 @@ class Handler(BaseHTTPRequestHandler):
             if session['role']!='owner' and route not in ('/api/summary','/api/files','/api/shares','/api/download','/api/archive','/api/preview','/api/image','/api/apps','/api/catalog','/api/trash','/api/jobs'):
                 raise APIError('This feature is available to the server owner.',403)
             self.file_volume(route,query,session)
+            if route == '/api/app-settings':return self.reply(self.app.app_settings.info(query.get('id',[''])[0],query.get('path',[None])[0]))
+            if route == '/api/app-location':return self.reply(self.app.app_settings.system_location())
+            if route == '/api/external-drives':return self.reply(dict(disks=self.app.external_drives.inventory(),support=self.app.external_drives.support()))
+            if route == '/api/external-files':return self.reply(self.app.external_drives.files(query.get('id',[''])[0],query.get('path',[''])[0]))
+            if route == '/api/external-download':
+                path=self.app.external_drives.path(query.get('id',[''])[0],query.get('path',[''])[0])
+                if not path.is_file():raise APIError('Choose a regular file.',409)
+                from urllib.parse import quote
+                with path.open('rb') as stream:
+                    self.send_response(200);self.headers_common()
+                    self.send_header('Content-Type','application/octet-stream')
+                    self.send_header('Content-Disposition',"attachment; filename*=UTF-8''"+quote(path.name))
+                    self.send_header('Content-Length',str(path.stat().st_size));self.end_headers()
+                    shutil.copyfileobj(stream,self.wfile,256*1024)
+                return
             if route == '/api/recovery':return self.reply(self.app.recovery.info())
             if route == '/api/system-files':return self.reply(self.app.system_files.info())
             if route == '/api/members':return self.reply(self.app.members.public())
@@ -946,7 +969,7 @@ class Handler(BaseHTTPRequestHandler):
         if origin and origin != expected:
             raise APIError('Cross-origin requests are not allowed.', 403)
         if route in ('/api/login', '/api/setup'):
-            data = self.json_body()
+            data = self.json_body(2*1024**2 if route=='/api/app-settings' else 32768)
             if route == '/api/setup':
                 self.require_local_console()
                 if self.app.admin:raise APIError('This server already has an administrator.',409)
@@ -1000,7 +1023,7 @@ class Handler(BaseHTTPRequestHandler):
             finally:temporary.unlink(missing_ok=True)
             self.app.event(f'Uploaded “{name}”.')
             return self.reply({'name': name}, 201)
-        data = self.json_body()
+        data = self.json_body(2*1024**2 if route=='/api/app-settings' else 32768)
         if route=='/api/network-plan':return self.reply(self.app.networking.plan(data))
         if route=='/api/network-action':return self.reply(self.app.networking.action(data),202)
         if route=='/api/os-updates/action':return self.reply(self.app.releases.action(data),202)
@@ -1048,6 +1071,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(self.app.job('Create snapshot', lambda: self.app.snapshot(data.get('share', ''))), 202)
         if route == '/api/restore':
             return self.reply(self.app.job('Restore snapshot', lambda: self.app.restore(data.get('snapshot', ''), data.get('name', ''))), 202)
+        if route == '/api/app-settings':return self.reply(self.app.app_settings.save(data),202)
+        if route == '/api/external-action':return self.reply(self.app.external_drives.action(data))
+        if route == '/api/filesystem-support':return self.reply(self.app.external_drives.install_support(),202)
         if route == '/api/app-action':
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':
