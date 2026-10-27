@@ -80,6 +80,15 @@ class HealthTests(unittest.TestCase):
         self.assertTrue(risk['health_risk'])
         self.assertEqual([d['serial'] for d in risk['failing_drives']], ['SERIAL1'])
 
+    def test_native_and_hybrid_member_health_resolve_their_disk_identifiers(self):
+        self.manager.health(self.disks)
+        self.manager.lifecycle_state = Mock(return_value={'arrays': [], 'members': [
+            {'id': self.disks[0]['id'], 'label': 'SERIAL0'},
+            {'id': 'native-device-2', 'disk_id': self.disks[1]['id'], 'label': 'SERIAL1'}]})
+        members = self.manager.lifecycle_info()['members']
+        self.assertEqual([m['health'] for m in members], ['failing', 'failing'])
+        self.assertEqual(members[0]['health_reasons'], ['8 pending sectors'])
+
     def test_cache_never_attaches_previous_drive_health_to_replacement(self):
         self.manager.health(self.disks)
         replacement = dict(self.disks[0], serial='NEW-SERIAL')

@@ -119,7 +119,7 @@ class DriveLifecycle:
    state=self.lifecycle_state();state.pop('arrays',None)
    inventory={d['id']:d for d in self.inventory()}
    for member in state['members']:
-    disk=inventory.get(member.get('disk_id'),{})
+    disk=inventory.get(member.get('disk_id') or member['id'],{})
     member.update(health=disk.get('health','unknown'),health_reasons=disk.get('health_reasons',[]))
    return dict(state,supported=True,pending=self.pending().exists())
   except Exception as error:return dict(supported=False,reason=str(error),members=[])

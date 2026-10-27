@@ -1,4 +1,4 @@
-# Drive health warnings — Harbour OS 0.11.0
+# Drive health warnings — Harbour OS 0.11.1
 
 SMART failures and bad-sector reports are advisory when creating, expanding, or repairing a pool. Review the warning and the existing typed confirmation to proceed. This applies to both clean installations and signed updates. No drives are automatically added, wiped, detached, or replaced by this update.
 
@@ -10,4 +10,4 @@ SMART reads run in a background worker, refresh on active appliance requests at 
 
 Operating-system disks, mounted filesystems, active arrays, current pool members, read-only disks, disk-identity changes, interrupted operations, and unsafe RAID topology remain protected. A disk still held by another active RAID array must first be released using the appropriate drive workflow; a SMART warning alone never makes an otherwise eligible disk unavailable.
 
-Validation: 141 Python regression tests, JavaScript syntax checks, and signed-update verification. Physical NAS verification reads actual SMART counters and reviews an expansion plan without executing it. Existing accounts, pool configuration, and application containers are preserved. Release ISO automation separately validates BIOS and UEFI boot.
+Validation: 142 Python regression tests, JavaScript syntax checks, and signed-update verification. Physical NAS verification reads actual SMART counters and reviews an expansion plan without executing it. Existing accounts, pool configuration, and application containers are preserved. Release ISO automation separately validates BIOS and UEFI boot.
