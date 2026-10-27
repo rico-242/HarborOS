@@ -109,6 +109,20 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(self.request('/api/files?volume=system&path=Files')[0],403)
         self.assertEqual(self.request('/api/upload?volume=system&path=Files&name=blocked.txt',b'blocked',raw=True)[0],403)
 
+    def test_members_cannot_plan_or_execute_disk_wipes(self):
+        self.setup_admin();token='f'*64;self.app.sessions[token]={'username':'member','role':'member','csrf':'member-csrf','expires':time.monotonic()+600}
+        self.cookie='harbor='+token;self.csrf='member-csrf'
+        for route in ('/api/storage/wipe-plan','/api/storage/wipe'):
+            self.assertEqual(self.request(route,{})[0],403)
+
+    def test_owner_wipe_endpoint_keeps_csrf_protection(self):
+        self.setup_admin()
+        with patch.object(self.app.storage_manager,'wipe_plan',return_value={'token':'test'}) as plan:
+            self.assertEqual(self.request('/api/storage/wipe-plan',{},headers={'X-Harbor-CSRF':''})[0],403)
+            plan.assert_not_called()
+            self.assertEqual(self.request('/api/storage/wipe-plan',{})[0],200)
+            plan.assert_called_once()
+
     def test_system_ssd_reserves_os_space(self):
         self.setup_admin();self.app.system_files.prepare()
         original=self.app.system_files.info

@@ -173,6 +173,7 @@ document.addEventListener('click',async event=>{
     if(action==='choose-snapshot'){const shares=await api('/api/shares');if(!shares.length)throw new Error('Create a shared folder first.');dialog('Keep this moment.','<label>Shared folder<select name="share">'+shares.map(s=>`<option>${E(s.name)}</option>`).join('')+'</select></label>','Create snapshot',async data=>{await api('/api/snapshots',{share:data.get('share')});toast('Snapshot job started. Follow it in Activity.');});}
     if(action==='restore')dialog('Bring a moment back.','<p class="small">Your current files stay in place. The snapshot becomes a new shared folder.</p><label>New folder name<input name="name" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,47}" required maxlength="48"></label>','Restore folder',async data=>{await api('/api/restore',{snapshot:target.dataset.id,name:data.get('name')});toast('Restore job started. Follow it in Activity.');});
     if(action==='app')await showStoreApp(target.dataset.id,target.dataset.operation);
+    if(action==='disk-wipe')await storageWipe(target.dataset.id);
     if(action==='storage-wizard')await openStorageWizard();
     if(action==='storage-mode'){storageWizard.level=target.dataset.mode==='basic'?'basic':'1';if(storageWizard.level==='basic')storageDisks();else storageLevels();}
     if(action==='storage-back'){if(storageWizard.expanding){closeDialog();return;}if(storageWizard.stage==='confirm'||storageWizard.stage==='name')storageDisks();else if(storageWizard.level==='basic')await openStorageWizard();else storageLevels();}

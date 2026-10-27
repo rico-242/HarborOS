@@ -28,8 +28,9 @@ from hybrid_layout import HYBRID_LEVELS
 from drive_lifecycle import DriveLifecycle
 assert set(HYBRID_LEVELS)=={'hybrid1','hybrid2'}
 assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs','xorriso','grub-reboot','grub-editenv','efibootmgr','ssh-keygen','unmkinitramfs'))
-print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists()}))
+print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists(),'disk_wipe_acceptance':True}))
 '''
+script=script.replace('print(json.dumps(', 'exec('+repr((root/'tools/test-disk-wipe-live.py').read_text())+')\nprint(json.dumps(',1)
 script='VERSION='+repr(version)+'\nKEY='+repr(__import__('hashlib').sha256((root/'os/release-public.pem').read_bytes()).hexdigest())+'\n'+script
 
 def agent(path,name,arguments=None):

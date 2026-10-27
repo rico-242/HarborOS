@@ -9,6 +9,7 @@ import time
 from hybrid_layout import HYBRID_LEVELS, layout
 from hybrid_storage import HybridStorage
 from drive_lifecycle import DriveLifecycle
+from disk_wipe import DiskWipe
 
 LEVELS = {
     'basic': {'name':'Basic','minimum':1,'maximum':1,'description':'One disk. No drive-failure protection.'},
@@ -44,7 +45,7 @@ def identity(disk):
     return hashlib.sha256(json.dumps({k:disk.get(k) for k in ('path','size','serial','wwn','id')},sort_keys=True).encode()).hexdigest()
 
 
-class StorageManager(HybridStorage,DriveLifecycle):
+class StorageManager(HybridStorage,DriveLifecycle,DiskWipe):
     def __init__(self, app, run, error):
         self.app,self.run,self.error=app,run,error
         self.plans={}
@@ -143,7 +144,7 @@ class StorageManager(HybridStorage,DriveLifecycle):
     def create(self,data):
         with self.app.lock:
             plan=self.plans.get(data.get('token',''))
-            if not plan or plan.get('kind')=='expand' or plan['expires']<time.monotonic():
+            if not plan or plan.get('kind') not in (None,'create') or plan['expires']<time.monotonic():
                 raise self.error('The disk plan expired. Review the disks again.',409)
             if data.get('confirmation')!='ERASE '+plan['name'] or data.get('acknowledge') is not True:
                 raise self.error('Confirm erasure using the exact storage name.')

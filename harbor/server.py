@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.9.1'
+VERSION = '0.10.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
@@ -817,7 +817,7 @@ class Handler(BaseHTTPRequestHandler):
             if route == '/api/storage/members':
                 return self.reply(self.app.storage_manager.lifecycle_info())
             if route == '/api/storage/disks':
-                return self.reply({'disks':self.app.storage_manager.inventory(),'levels':LEVELS,'live':os.getenv('HARBOR_LIVE')=='1'})
+                return self.reply({'disks':self.app.storage_manager.wipe_inventory(),'levels':LEVELS,'live':os.getenv('HARBOR_LIVE')=='1'})
             if route == '/api/shares':
                 return self.reply([s for s in self.app.config['shares'] if self.app.members.allowed(s,session['username'])])
             if route == '/api/files':
@@ -1074,6 +1074,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(self.app.storage_manager.expand_plan(data))
         if route == '/api/storage/expand':
             return self.reply(self.app.storage_manager.expand(data),202)
+        if route == '/api/storage/wipe-plan':
+            return self.reply(self.app.storage_manager.wipe_plan(data))
+        if route == '/api/storage/wipe':
+            return self.reply(self.app.storage_manager.wipe_disk(data),202)
         if route == '/api/storage/plan':
             return self.reply(self.app.storage_manager.plan(data))
         if route == '/api/storage/create':
