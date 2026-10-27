@@ -105,13 +105,13 @@ def install(disk):
         run('grub-install','--target=i386-pc','--boot-directory='+str(TARGET/'boot'),device)
         (TARGET/'boot/grub/grub.cfg').write_text(f'''set timeout=5
 set default=0
-menuentry 'Harbour OS 0.10.0' {{
+menuentry 'Harbour OS 0.10.1' {{
   search --no-floppy --fs-uuid --set=root {root_uuid}
   linux /boot/harbor-vmlinuz root=UUID={root_uuid} rw rootwait quiet splash console=tty0 console=ttyS0,115200n8 panic=30
   initrd /boot/harbor-initrd
 }}
 ''')
-        (TARGET/'var/lib/harbor/installation.json').write_text(json.dumps({'version':'0.10.0','target':current['id'],
+        (TARGET/'var/lib/harbor/installation.json').write_text(json.dumps({'version':'0.10.1','target':current['id'],
             'serial':current.get('serial'),'root_uuid':root_uuid,'installer':'Harbor live ISO'},indent=2))
         run('sync','-f',str(TARGET))
     finally:
@@ -126,7 +126,7 @@ def main():
     if os.geteuid()!=0 or 'boot=live' not in Path('/proc/cmdline').read_text().split() or not SOURCE.is_file():
         raise SystemExit('Run this installer from the booted Harbor live ISO.')
     disks=inventory()
-    print('\nHARBOUR OS 0.10.0 — INSTALL TO DISK\n')
+    print('\nHARBOUR OS 0.10.1 — INSTALL TO DISK\n')
     print('The destination disk will be completely erased. Other disks are left untouched.')
     print('The live USB, mounted disks, and disks smaller than 16 GiB are excluded.\n')
     for i,disk in enumerate(disks,1):

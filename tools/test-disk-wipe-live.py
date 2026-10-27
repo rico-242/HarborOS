@@ -43,6 +43,11 @@ with tempfile.TemporaryDirectory(prefix='harbour-wipe-',dir='/run') as folder:
   manager=StorageManager(app,command,WipeTestError);manager.inventory=lambda:[disk]
   try:manager.wipe_plan({'disk':str(alias)});raise AssertionError('Another current pool member on the same array was not protected')
   except WipeTestError as error:assert 'pool' in str(error)
+  raw('mdadm','--stop',array)
+  assembled=subprocess.run(['mdadm','--assemble','--no-degraded',array,loops[0]],text=True,capture_output=True)
+  assert assembled.returncode in (0,1),assembled.stderr
+  topology=json.loads(raw('lsblk','-J','-p','-o','PATH,TYPE',array).stdout)
+  assert topology['blockdevices'][0]['type']=='md',topology
   app.config={'storage':{}}
   def no_health(*args):raise AssertionError('Wiping must not depend on SMART health')
   manager.health=no_health

@@ -12,7 +12,7 @@ class WipeTests(unittest.TestCase):
   temp=tempfile.TemporaryDirectory(dir=root);self.addCleanup(temp.cleanup)
   self.app=SimpleNamespace(demo=False,state=Path(temp.name),config={'storage':{'uuid':'POOL','disks':['/dev/current-pool']}},lock=threading.RLock(),job=lambda title,fn,**kw:fn(),job_progress=Mock(),event=Mock())
   self.disk={'id':'/dev/disk/by-id/ata-spare','path':'/dev/vdb','size':1000000,'serial':'SPARE','wwn':'','model':'Spare','eligible':False,'reason':'Active old array','existing_data':True}
-  self.array=True;self.wiped=False;self.mounts=[];self.ancestry_mounts=[];self.calls=[]
+  self.array_type='raid1';self.array=True;self.wiped=False;self.mounts=[];self.ancestry_mounts=[];self.calls=[]
   self.manager=StorageManager(self.app,self.command,Error);self.manager.inventory=lambda:[self.disk]
   self.manager.health=Mock(side_effect=Error('Failed SMART'))
   self.manager.record=lambda value:self.manager.pending().write_text(json.dumps(value))
@@ -20,13 +20,14 @@ class WipeTests(unittest.TestCase):
   disk={'path':'/dev/vdb','type':'disk','size':1000000,'ro':False,'mountpoints':self.mounts}
   if not self.wiped:
    part={'path':'/dev/vdb1','type':'part','size':990000,'partuuid':'PART','uuid':'OLD','fstype':'linux_raid_member','mountpoints':[]};disk['children']=[part]
-   if self.array:part['children']=[{'path':'/dev/md127','type':'raid1','uuid':'OLD-FS','mountpoints':self.ancestry_mounts}]
+   if self.array:part['children']=[{'path':'/dev/md127','type':self.array_type,'uuid':'OLD-FS','mountpoints':self.ancestry_mounts}]
   return {'blockdevices':[disk]}
  def command(self,*args,**kwargs):
   self.calls.append(args);out=''
   if args[0]=='lsblk':out=json.dumps(self.tree('-s' in args))
   if args[:3]==('btrfs','filesystem','show'):out=''
-  if args[:3]==('mdadm','--detail','--export'):out='MD_UUID=OLD-ARRAY\n'
+  if args[:3]==('mdadm','--detail','--export'):out='' if self.array_type=='md' else 'MD_UUID=OLD-ARRAY\n'
+  if args[:3]==('mdadm','--examine','--export'):out='MD_UUID=OLD-ARRAY\n'
   if args[:2]==('mdadm','--stop'):self.array=False
   if args[:3]==('wipefs','--all','--force') and args[-1]==self.disk['id']:self.wiped=True
   if args[:2]==('wipefs','--json'):out='{"signatures":[]}'
@@ -82,4 +83,17 @@ class WipeTests(unittest.TestCase):
  def test_wipe_token_cannot_create_a_pool(self):
   plan=self.plan()
   with self.assertRaisesRegex(Error,'expired'):self.manager.create({'token':plan['token'],'acknowledge':True,'confirmation':plan['confirmation']})
+  self.assertFalse(self.destructive())
+
+ def test_inactive_md_array_can_be_detached_and_wiped(self):
+  self.array_type='md'
+  self.assertTrue(self.execute(self.plan())['wiped'])
+  self.manager.health.assert_not_called()
+ def test_unidentified_inactive_array_is_never_stopped(self):
+  self.array_type='md';original=self.manager.run
+  def command(*args,**kwargs):
+   if args[:3]==('mdadm','--examine','--export'):return SimpleNamespace(stdout='',returncode=1)
+   return original(*args,**kwargs)
+  self.manager.run=command
+  with self.assertRaisesRegex(Error,'identity'):self.plan()
   self.assertFalse(self.destructive())

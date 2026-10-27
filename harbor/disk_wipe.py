@@ -29,7 +29,7 @@ class DiskWipe:
    try:uncertain=any(' - btrfs ' in line for line in Path('/proc/self/mountinfo').read_text().splitlines())
    except OSError:uncertain=True
    if uncertain and any(n.get('fstype')=='btrfs' for n in items):raise self.error('Mounted Btrfs membership could not be verified.',409)
-  arrays=[];allowed={'disk','part','raid0','raid1','raid4','raid5','raid6','raid10','linear'}
+  arrays=[];allowed={'disk','part','raid0','raid1','raid4','raid5','raid6','raid10','linear','md'}
   def check(values):
    for n in values:
     if n.get('type') not in allowed:raise self.error('Unknown active storage layer. Detach it before wiping.',409)
@@ -37,13 +37,21 @@ class DiskWipe:
     if n.get('ro'):raise self.error('This disk or an attached storage layer is read-only.',409)
     if str(Path(n['path']).resolve()) in protected or (config.get('uuid') and n.get('uuid')==config['uuid']):raise self.error('The disk is connected to the current pool.',409)
   check(items)
-  for path in sorted({n['path'] for n in items if n.get('type','').startswith('raid') or n.get('type')=='linear'}):
+  for path in sorted({n['path'] for n in items if n.get('type','').startswith('raid') or n.get('type') in ('linear','md')}):
    ancestry=list(nodes(json.loads(self.run('lsblk','-s','-J','-b','-p','-o',fields,path).stdout)['blockdevices']));check(ancestry)
-   if len({n['path'] for n in ancestry if n.get('type','').startswith('raid') or n.get('type')=='linear'})!=1:raise self.error('Nested RAID arrays require manual detachment.',409)
-   detail=self.run('mdadm','--detail','--export',path).stdout
+   if len({n['path'] for n in ancestry if n.get('type','').startswith('raid') or n.get('type') in ('linear','md')})!=1:raise self.error('Nested RAID arrays require manual detachment.',409)
+   detail=self.run('mdadm','--detail','--export',path,check=False).stdout
    match=re.search(r'^MD_UUID=(\S+)$',detail,re.M)
-   if not match:raise self.error('The old RAID identity could not be verified.',409)
-   arrays.append({'path':path,'uuid':match[1],'members':sorted(n['path'] for n in ancestry if n['type']=='disk')})
+   uuids=set()
+   for member in {n['path'] for n in ancestry if n['type'] in ('disk','part') and n.get('fstype')=='linux_raid_member'}:
+    report=self.run('mdadm','--examine','--export',member,check=False).stdout
+    found=re.search(r'^MD_UUID=(\S+)$',report,re.M)
+    if found:uuids.add(found[1])
+   if match:uuids.add(match[1])
+   if len(uuids)!=1:raise self.error('The old RAID identity could not be verified.',409)
+   uuid=next(iter(uuids))
+   if uuid in {a.get('uuid') for group in config.get('hybrid',{}).get('groups',[]) for a in group.get('arrays',[])}:raise self.error('The old array belongs to the current pool.',409)
+   arrays.append({'path':path,'uuid':uuid,'members':sorted(n['path'] for n in ancestry if n['type']=='disk')})
   known={Path(a['path']).resolve().name for a in arrays}
   for n in items:
    for holder in (Path('/sys/class/block')/Path(n['path']).name/'holders').glob('*'):
