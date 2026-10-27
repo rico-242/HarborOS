@@ -88,7 +88,11 @@ class Recovery:
   if (self.root/'ready.json').exists():
    try:prepared=json.loads((self.root/'ready.json').read_text())
    except (ValueError,OSError):pass
-  return dict(supported=supported,reason=reason,prepared=prepared,requires_local_screen=True,warning='Fresh installation erases the selected system disk, including System SSD files, apps, accounts and settings. Data-pool disks are separate and are not erased by preparation or recovery boot.')
+  remote=None
+  if (self.root/'remote-plan.json').exists():
+   try:remote=json.loads((self.root/'remote-plan.json').read_text()).get('plan')
+   except (OSError,ValueError):pass
+  return dict(supported=supported,reason=reason,prepared=prepared,remote=remote,requires_local_screen=not bool(remote),warning='Fresh installation erases the selected system disk, including System SSD files, apps, accounts and settings. Data-pool disks are separate and are not erased by preparation or recovery boot.')
  def prepare(self):
   fs=self.supported()
   def execute():

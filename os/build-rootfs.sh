@@ -26,7 +26,7 @@ deb https://deb.debian.org/debian trixie-updates main contrib non-free-firmware
 deb https://security.debian.org/debian-security trixie-security main contrib non-free-firmware
 EOF
 chroot "$TARGET" apt-get update
-chroot "$TARGET" apt-get install -y --no-install-recommends linux-image-amd64 systemd-sysv systemd-timesyncd systemd-resolved dbus udev initramfs-tools busybox python3 openssh-server sudo ca-certificates curl openssl iproute2 iputils-ping ethtool pciutils usbutils btrfs-progs mdadm smartmontools samba smbclient docker.io docker-cli avahi-daemon libnss-mdns locales kmod less nano rsync parted e2fsprogs dosfstools cloud-guest-utils firmware-realtek firmware-iwlwifi intel-microcode grub-efi-amd64-bin grub-pc-bin grub2-common xorriso
+chroot "$TARGET" apt-get install -y --no-install-recommends linux-image-amd64 systemd-sysv systemd-timesyncd systemd-resolved dbus udev initramfs-tools busybox python3 openssh-server sudo ca-certificates curl openssl iproute2 iputils-ping ethtool pciutils usbutils btrfs-progs mdadm smartmontools samba smbclient docker.io docker-cli avahi-daemon libnss-mdns locales kmod less nano rsync parted e2fsprogs dosfstools cloud-guest-utils firmware-realtek firmware-iwlwifi intel-microcode grub-efi-amd64-bin grub-pc-bin grub2-common xorriso efibootmgr
 rsync -a "$SOURCE"/harbor/ "$TARGET/opt/harbor/"
 install -m 644 "$SOURCE"/os/harbor.service "$TARGET/etc/systemd/system/harbor.service"
 install -m 755 "$SOURCE"/os/harbor-init "$TARGET/usr/local/sbin/harbor-init"

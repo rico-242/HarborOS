@@ -55,6 +55,10 @@ class StorageManager(HybridStorage,DriveLifecycle):
         tree=json.loads(self.run('lsblk','-J','-b','-p','-o','NAME,PATH,SIZE,TYPE,FSTYPE,MOUNTPOINTS,MODEL,SERIAL,WWN,RO,RM').stdout)['blockdevices']
         # lsblk reports the mount only on one Btrfs member. Protect every member.
         btrfs=self.run('btrfs','filesystem','show','--mounted','--raw',check=False)
+        uncertain_btrfs=bool(btrfs.returncode)
+        if uncertain_btrfs:
+            try:uncertain_btrfs=any(' - btrfs ' in line for line in Path('/proc/self/mountinfo').read_text().splitlines())
+            except OSError:pass
         btrfs_members={str(Path(match).resolve()) for match in re.findall(r'\bpath\s+(/dev/\S+)',btrfs.stdout)}
         links={}
         for path in sorted(Path('/dev/disk/by-id').glob('*'),key=lambda p:(not p.name.startswith('wwn-'),p.name)):
@@ -67,7 +71,7 @@ class StorageManager(HybridStorage,DriveLifecycle):
             nodes=list(descendants(disk))
             mounted=any(any(m for m in (n.get('mountpoints') or [])) or n.get('fstype')=='swap' for n in nodes)
             mounted=mounted or any(str(Path(n['path']).resolve()) in btrfs_members for n in nodes)
-            if btrfs.returncode:
+            if uncertain_btrfs:
                 mounted=mounted or any(n.get('fstype')=='btrfs' for n in nodes)
             held=any(any((Path('/sys/class/block')/Path(n['path']).name/'holders').glob('*')) for n in nodes)
             stable=links.get(disk['path'])

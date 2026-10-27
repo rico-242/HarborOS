@@ -85,6 +85,23 @@ class StorageTests(unittest.TestCase):
         self.manager.run=run
         self.assertEqual(self.manager.inventory()[0]['reason'],'Mounted disk, operating system, or active storage')
 
+    def test_unused_btrfs_signature_remains_available_without_mounted_btrfs(self):
+        self._check_failed_btrfs_discovery('', 'No stable disk identifier')
+
+    def test_failed_discovery_protects_btrfs_when_any_btrfs_is_mounted(self):
+        self._check_failed_btrfs_discovery('42 1 0:3 / /data rw - btrfs /dev/vdc rw', 'Mounted disk, operating system, or active storage')
+
+    def _check_failed_btrfs_discovery(self, mountinfo, reason):
+        self.manager.inventory=storage.StorageManager.inventory.__get__(self.manager)
+        device={'type':'disk','path':'/dev/vdb','size':1000,'ro':False,'mountpoints':[], 'fstype':'btrfs'}
+        def run(*args,**kwargs):
+            return type('Result',(),{'stdout':json.dumps({'blockdevices':[device]}) if args[0]=='lsblk' else '', 'returncode':0 if args[0]=='lsblk' else 1})()
+        self.manager.run=run
+        original=Path.read_text
+        def read(path,*args,**kwargs):
+            return mountinfo if path.as_posix()=='/proc/self/mountinfo' else original(path,*args,**kwargs)
+        with patch.object(Path,'read_text',read):self.assertEqual(self.manager.inventory()[0]['reason'],reason)
+
     def test_typed_confirmation_and_identity_revalidation(self):
         plan=self.plan()
         with self.assertRaisesRegex(Error,'Confirm erasure'):
@@ -108,3 +125,4 @@ class StorageTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
