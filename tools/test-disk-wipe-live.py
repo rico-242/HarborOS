@@ -43,11 +43,16 @@ with tempfile.TemporaryDirectory(prefix='harbour-wipe-',dir='/run') as folder:
   manager=StorageManager(app,command,WipeTestError);manager.inventory=lambda:[disk]
   try:manager.wipe_plan({'disk':str(alias)});raise AssertionError('Another current pool member on the same array was not protected')
   except WipeTestError as error:assert 'pool' in str(error)
-  raw('mdadm','--stop',array)
-  assembled=subprocess.run(['mdadm','--assemble','--no-degraded',array,loops[0]],text=True,capture_output=True)
-  assert assembled.returncode in (0,1),assembled.stderr
-  topology=json.loads(raw('lsblk','-J','-p','-o','PATH,TYPE',array).stdout)
-  assert topology['blockdevices'][0]['type']=='md',topology
+  # Keep the fixture's members attached while stopping its personality.
+  # `mdadm --assemble` may remove the incomplete device again on exit.
+  resolved_array=Path(array).resolve();sys_array=Path('/sys/class/block')/resolved_array.name
+  assert {item.name for item in (sys_array/'slaves').glob('*')}=={Path(loop).name for loop in loops}
+  (sys_array/'md/array_state').write_text('inactive\n')
+  array=str(resolved_array)
+  raw('udevadm','settle')
+  topology=json.loads(raw('lsblk','-J','-b','-p','-o','PATH,TYPE,SIZE',array).stdout)
+  assert (sys_array/'md/array_state').read_text().strip()=='inactive'
+  assert topology['blockdevices'][0]['type'] in ('md','raid1') and topology['blockdevices'][0]['size']==0,topology
   app.config={'storage':{}}
   def no_health(*args):raise AssertionError('Wiping must not depend on SMART health')
   manager.health=no_health
