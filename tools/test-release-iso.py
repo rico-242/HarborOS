@@ -30,7 +30,7 @@ assert set(HYBRID_LEVELS)=={'hybrid1','hybrid2'}
 assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs','xorriso','grub-reboot','grub-editenv','efibootmgr','ssh-keygen','unmkinitramfs'))
 print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists(),'disk_wipe_acceptance':True}))
 '''
-script=script.replace('print(json.dumps(', 'exec('+repr((root/'tools/test-disk-wipe-live.py').read_text())+')\nprint(json.dumps(',1)
+script=script.replace('print(json.dumps(', "Path('/run/disk-wipe-live-test.py').write_text("+repr((root/'tools/test-disk-wipe-live.py').read_text())+")\nimport runpy\nrunpy.run_path('/run/disk-wipe-live-test.py')\nprint(json.dumps(",1)
 script='VERSION='+repr(version)+'\nKEY='+repr(__import__('hashlib').sha256((root/'os/release-public.pem').read_bytes()).hexdigest())+'\n'+script
 
 def agent(path,name,arguments=None):
@@ -69,7 +69,9 @@ for firmware in ('bios','uefi'):
        time.sleep(1)
       if not status.get('exited'):raise RuntimeError('Guest check timed out')
       out=base64.b64decode(status.get('out-data','')).decode();err=base64.b64decode(status.get('err-data','')).decode()
-      if status.get('exitcode')!=0:raise RuntimeError(err or out)
+      if status.get('exitcode')!=0:
+       if 'disk-wipe-live-test.py' in err:raise AssertionError(err)
+       raise RuntimeError(err or out)
       value=json.loads(out);assert value['uefi']==(firmware=='uefi')
       results[firmware]=value;print(firmware+': '+out,flush=True);break
      except (OSError,RuntimeError,ValueError) as error:

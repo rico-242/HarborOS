@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='harbour-wipe-',dir='/run') as folder:
   for i in range(2):
    image=root/('disk'+str(i)+'.img')
    with image.open('wb') as stream:stream.truncate(96*1024**2)
-   loops.append(raw('losetup','--find','--show',str(image)).stdout.strip())
+   loops.append(raw('losetup','--find','--show','--partscan',str(image)).stdout.strip())
   # Verify ownership of every loop before creating the disposable array.
   for loop in loops:
    backing=raw('losetup','--noheadings','--output','BACK-FILE',loop).stdout.strip()
@@ -29,7 +29,8 @@ with tempfile.TemporaryDirectory(prefix='harbour-wipe-',dir='/run') as folder:
    if args[0] in ('mdadm','wipefs','blockdev'):
     for value in args:
      if value.startswith('/dev/'):assert value in (*loops,str(alias),array) or Path(value).resolve()==Path(array).resolve()
-   result=subprocess.run(args,text=True,capture_output=True,check=kw.get('check',True),timeout=kw.get('timeout',30))
+   try:result=subprocess.run(args,text=True,capture_output=True,check=kw.get('check',True),timeout=kw.get('timeout',30))
+   except subprocess.CalledProcessError as error:raise RuntimeError(str(error)+': '+error.stderr.strip()) from None
    if args[0]=='lsblk':
     data=json.loads(result.stdout)
     def translate(items):
