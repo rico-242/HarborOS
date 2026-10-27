@@ -1,0 +1,14 @@
+{
+  "version": "0.8.1",
+  "legacy_subdirectory_path_booted_in_vm": true,
+  "legacy_one_time_environment_flag_cleared": true,
+  "full_live_source_in_ram": true,
+  "virtual_system_disk_released": true,
+  "normal_vm_boot_configuration_restored": true,
+  "actual_nas_layout_recognized": true,
+  "actual_nas_candidate_passes_grub_syntax": true,
+  "actual_nas_boot_selection_unchanged_during_validation": true,
+  "standard_recovery_tests_preserved": true,
+  "fresh_install_from_legacy_ram_path_passed": true,
+  "installer_ram_source_guard_passed": true
+}

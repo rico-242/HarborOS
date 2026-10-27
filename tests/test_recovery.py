@@ -33,7 +33,7 @@ class RecoveryTests(unittest.TestCase):
   self.assertEqual(once,twice);self.assertIn('save_env next_entry',once);self.assertIn('else\n  set default=0',once)
   self.assertIn('toram findiso=',once);self.assertEqual(once.count('--id harbour-recovery'),1);self.assertIn('root=UUID='+uuid,once)
  def test_other_bootloader_rejected(self):
-  with self.assertRaisesRegex(ValueError,'standard'):grub_configuration('menuentry something {}','00000000-0000-0000-0000-000000000001')
+  with self.assertRaisesRegex(ValueError,'verified'):grub_configuration('menuentry something {}','00000000-0000-0000-0000-000000000001')
  def test_reboot_requires_exact_confirmation_and_local_screen(self):
   run=Mock();app=SimpleNamespace(state=self.folder,demo=True);recovery=Recovery(app,run,Error,'0.8.0');recovery.supported=Mock(return_value={})
   for value in ({'confirmation':'BOOT RECOVERY','local_screen':False},{'confirmation':'yes','local_screen':True}):
@@ -47,3 +47,15 @@ class RecoveryTests(unittest.TestCase):
   with patch.object(module,'Path',side_effect=lambda path:command if path=='/proc/cmdline' else Path(path)),patch.object(module,'run',run):
    with self.assertRaisesRegex(RuntimeError,'RAM'):module.install({})
   self.assertEqual(run.call_count,1);self.assertEqual(run.call_args.args[0],'findmnt')
+
+ def test_legacy_boot_retains_zima_and_normal_harbour_policy(self):
+  uuid='00000000-0000-0000-0000-000000000001'
+  original='set timeout=5\nload_env\nset default=1\nset harbor_default=1\nset harbor_once=0\nsave_env harbor_once\nmenuentry Harbour --id harbor {\n linux /harbor/rootfs/boot/harbor-vmlinuz root=UUID='+uuid+' rw harbor.subdir=harbor/rootfs\n}\nmenuentry Zima --id zima {}\n'
+  generated=grub_configuration(original,uuid,'/harbor/rootfs',True)
+  self.assertTrue(generated.startswith(original.split('menuentry ')[0]))
+  self.assertIn('set harbor_default=1',generated);self.assertIn('menuentry Zima --id zima {}',generated)
+  self.assertIn('findiso=/harbor/rootfs/boot/harbour-recovery/recovery.iso',generated)
+  self.assertIn('save_env harbour_recovery_once',generated)
+  self.assertEqual(generated,grub_configuration(generated,uuid,'/harbor/rootfs',True))
+ def test_unsupported_subdirectory_root_is_rejected(self):
+  with self.assertRaisesRegex(ValueError,'filesystem root'):grub_configuration('root=UUID=00000000-0000-0000-0000-000000000001 /boot/harbor-vmlinuz','00000000-0000-0000-0000-000000000001','/other',True)

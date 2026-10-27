@@ -24,11 +24,24 @@ def verify_manifest(envelope,key):
    except Exception:raise ValueError('The recovery image was not signed by the trusted Harbour key.') from None
  return manifest
 
-def grub_configuration(original,uuid):
- if not re.fullmatch('[a-fA-F0-9-]{36}',uuid) or 'root=UUID='+uuid not in original or '/boot/harbor-vmlinuz' not in original:raise ValueError('Only Harbour’s standard ext4 system boot configuration is supported.')
+def grub_configuration(original,uuid,prefix='',legacy=False):
+ if not re.fullmatch('[a-fA-F0-9-]{36}',uuid) or 'root=UUID='+uuid not in original or '/boot/harbor-vmlinuz' not in original:raise ValueError('Only verified Harbour ext4 boot configurations are supported.')
+ if prefix not in ('','/harbor/rootfs') or legacy!=(prefix=='/harbor/rootfs'):raise ValueError('Unsupported recovery filesystem root.')
  marker='\n# HARBOUR RECOVERY START\n'
  original=original.split(marker)[0]
- if '# HARBOUR ONE-TIME BOOT' not in original:
+ if legacy:
+  if 'load_env' not in original or '--id harbor' not in original or '--id zima' not in original or 'harbor_default' not in original:raise ValueError('The legacy Harbour/Zima boot configuration is not recognized.')
+  if '# HARBOUR LEGACY ONE-TIME RECOVERY' not in original:
+   index=original.index('menuentry ')
+   original=original[:index]+'''# HARBOUR LEGACY ONE-TIME RECOVERY
+if [ "$harbour_recovery_once" = "1" ]; then
+  set default=harbour-recovery
+  set harbour_recovery_once=0
+  save_env harbour_recovery_once
+fi
+
+'''+original[index:]
+ elif '# HARBOUR ONE-TIME BOOT' not in original:
   if 'set default=0' not in original:raise ValueError('The standard Harbour boot default is unavailable.')
   original=original.replace('set default=0','''# HARBOUR ONE-TIME BOOT
 if [ -s $prefix/grubenv ]; then load_env; fi
@@ -41,8 +54,8 @@ else
 fi''',1)
  return original+marker+'''menuentry 'Harbour recovery — fresh installation' --id harbour-recovery {
   search --no-floppy --fs-uuid --set=root '''+uuid+'''
-  linux /boot/harbour-recovery/vmlinuz boot=live components nopersistence noeject toram findiso=/boot/harbour-recovery/recovery.iso harbour.recovery=1 quiet splash console=tty0 console=ttyS0,115200n8
-  initrd /boot/harbour-recovery/initrd.img
+  linux '''+prefix+'''/boot/harbour-recovery/vmlinuz boot=live components nopersistence noeject toram findiso='''+prefix+'''/boot/harbour-recovery/recovery.iso harbour.recovery=1 quiet splash console=tty0 console=ttyS0,115200n8
+  initrd '''+prefix+'''/boot/harbour-recovery/initrd.img
 }
 # HARBOUR RECOVERY END
 '''
@@ -54,9 +67,18 @@ class Recovery:
   self.key=Path('/etc/harbor/update-public.pem')
  def supported(self):
   if self.app.demo or os.getenv('HARBOR_LIVE')=='1':raise self.error('Recovery preparation requires an installed Harbour system.',409)
-  fs=json.loads(self.run('findmnt','-J','-T','/','-o','SOURCE,FSTYPE,UUID,TARGET').stdout)['filesystems'][0]
+  fs=json.loads(self.run('findmnt','-J','-T','/','-o','SOURCE,FSTYPE,UUID,TARGET,FSROOT').stdout)['filesystems'][0]
   if fs['fstype']!='ext4' or fs['target']!='/' or not fs.get('uuid'):raise self.error('Recovery currently requires the standard ext4 Harbour installation.',409)
   if Path('/boot').stat().st_dev!=Path('/').stat().st_dev:raise self.error('Recovery requires /boot on the system filesystem.',409)
+  prefix=fs.get('fsroot','/').rstrip('/')
+  legacy=prefix=='/harbor/rootfs'
+  if prefix and (not legacy or 'harbor.subdir=harbor/rootfs' not in Path('/proc/cmdline').read_text().split()):raise self.error('This filesystem-root layout is not supported for recovery.',409)
+  fs.update(image_prefix=prefix,legacy=legacy,grub_config='/boot/efi/EFI/BOOT/grub.cfg' if legacy else '/boot/grub/grub.cfg',grub_env='/boot/efi/EFI/BOOT/grubenv' if legacy else '/boot/grub/grubenv')
+  if not Path(fs['grub_config']).is_file():raise self.error('The Harbour bootloader configuration is missing. Recovery cannot be prepared.',409)
+  if legacy:
+   esp=json.loads(self.run('findmnt','-J','-T','/boot/efi','-o','SOURCE,FSTYPE,TARGET').stdout)['filesystems'][0]
+   if esp['target']!='/boot/efi' or esp['fstype']!='vfat' or not Path(fs['grub_env']).is_file():raise self.error('The legacy EFI partition and boot environment must be mounted and intact.',409)
+  grub_configuration(Path(fs['grub_config']).read_text(),fs['uuid'],prefix,legacy)
   if not all(shutil.which(name) for name in ('xorriso','grub-reboot','grub-editenv','grub-script-check','openssl')):raise self.error('Recovery tools are unavailable. Install the Harbour recovery tools first.',409)
   return fs
  def info(self):
@@ -103,14 +125,14 @@ class Recovery:
    for name in ('vmlinuz','initrd.img'):
     destination=self.root/name;destination.unlink(missing_ok=True)
     self.run('xorriso','-osirrox','on','-indev',str(self.root/'recovery.iso'),'-extract','/live/'+name,str(destination),timeout=120)
-   config_path=Path('/boot/grub/grub.cfg');original=config_path.read_text();generated=grub_configuration(original,fs['uuid'])
+   config_path=Path(fs['grub_config']);original=config_path.read_text();generated=grub_configuration(original,fs['uuid'],fs['image_prefix'],fs['legacy'])
    trial=self.root/'grub.cfg.check';atomic_text(trial,generated);self.run('grub-script-check',str(trial))
    if not (self.root/'grub.cfg.backup').exists():atomic_text(self.root/'grub.cfg.backup',original)
    atomic_text(config_path,generated)
-   if not Path('/boot/grub/grubenv').exists():self.run('grub-editenv','/boot/grub/grubenv','create')
+   if not Path(fs['grub_env']).exists():self.run('grub-editenv',fs['grub_env'],'create')
    hashes={name:hashlib.sha256((self.root/name).read_bytes()).hexdigest() for name in ('vmlinuz','initrd.img')}
    atomic_text(self.root/'signed-manifest.json',json.dumps(envelope))
-   atomic_text(self.root/'ready.json',json.dumps(dict(version=self.current,sha256=manifest['sha256'],size=count,kernel_hashes=hashes,root_uuid=fs['uuid'])))
+   atomic_text(self.root/'ready.json',json.dumps(dict(version=self.current,sha256=manifest['sha256'],size=count,kernel_hashes=hashes,root_uuid=fs['uuid'],image_prefix=fs['image_prefix'],legacy=fs['legacy'])))
    return self.info()
   return self.app.job('Prepare fresh OS installation',execute,kind='recovery')
  def boot(self,data):
@@ -118,13 +140,14 @@ class Recovery:
   if data.get('confirmation')!='BOOT RECOVERY' or data.get('local_screen') is not True:raise self.error('Confirm BOOT RECOVERY and access to a connected monitor and keyboard.',409)
   def execute():
    ready=json.loads((self.root/'ready.json').read_text());manifest=verify_manifest(json.loads((self.root/'signed-manifest.json').read_text()),self.key)
-   if manifest['version']!=self.current or ready['root_uuid']!=fs['uuid'] or ready['sha256']!=manifest['sha256']:raise self.error('Recovery staging differs from the signed image.',409)
+   if manifest['version']!=self.current or ready.get('image_prefix','')!=fs['image_prefix'] or ready.get('legacy',False)!=fs['legacy'] or ready['root_uuid']!=fs['uuid'] or ready['sha256']!=manifest['sha256']:raise self.error('Recovery staging differs from the signed image.',409)
    self.app.job_progress('Verifying staged recovery','Checking the image again before selecting a one-time boot.')
    with (self.root/'recovery.iso').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
    if digest!=manifest['sha256']:raise self.error('The staged recovery image changed. Prepare it again.',409)
    for name,digest in ready['kernel_hashes'].items():
     if name not in ('vmlinuz','initrd.img') or hashlib.sha256((self.root/name).read_bytes()).hexdigest()!=digest:raise self.error('The staged recovery kernel changed.',409)
-   self.run('grub-reboot','harbour-recovery')
+   if fs['legacy']:self.run('grub-editenv',fs['grub_env'],'set','harbour_recovery_once=1')
+   else:self.run('grub-reboot','harbour-recovery')
    self.run('systemd-run','--on-active=5','--unit=harbour-enter-recovery','/usr/bin/systemctl','reboot')
    return {'message':'Restarting into the local graphical installer. No disk is erased until you confirm its installation there.'}
   return self.app.job('Boot recovery installer',execute,kind='recovery')
