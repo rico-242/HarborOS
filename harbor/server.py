@@ -28,10 +28,10 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.10.1'
+VERSION = '0.10.2'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
-from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name
+from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
 from storage import StorageManager, LEVELS
 from fileops import FileOperations,filename,transfer
 from members import Members
@@ -530,7 +530,7 @@ class Harbor:
             project = 'com.docker.compose.project=' + project_name(ident)
             group = [c for c in containers.values() if project in c.get('Labels','').split(',')]
             installed = bool(legacy or group or (self.state/'compose'/ident/'compose.json').exists())
-            state = legacy['State'] if legacy else ('running' if group and all(c['State']=='running' for c in group) else 'stopped' if installed else 'available')
+            state = legacy['State'] if legacy else (compose_app_state(item,group) if installed else 'available')
             result.append(dict(public_item(item), installed=installed, state=state))
         return result
 
@@ -586,16 +586,7 @@ class Harbor:
                         raise APIError('This application is already configured. Use Start.',409)
                     self.require_storage()
                     folder.mkdir(parents=True,exist_ok=True)
-                    # Only provision directories inside Harbor's app and share roots.
-                    for service in plan['compose']['services'].values():
-                        for volume in service.get('volumes',[]):
-                            if not isinstance(volume,dict) or volume.get('type')!='bind':
-                                continue
-                            source=Path(volume['source'])
-                            for allowed in (self.apps.resolve(),(self.storage/'shares').resolve()):
-                                if source.resolve().is_relative_to(allowed):
-                                    source.mkdir(parents=True,exist_ok=True)
-                                    break
+                    provision_app_mounts(ident,plan['compose'],self.apps,self.storage)
                     atomic_json(config,plan['compose'])
                     try:
                         self.job_progress('Validating configuration', 'Checking the official app definition and your settings.')
@@ -626,6 +617,8 @@ class Harbor:
                 else:
                     if not config.exists():
                         raise APIError('This application has not been installed.',409)
+                    if action=='start' and ident=='anythingllm':
+                        provision_app_mounts(ident,json.loads(config.read_text()),self.apps,self.storage)
                     self.job_progress('Starting containers' if action=='start' else 'Stopping containers', 'Applying the requested application state.')
                     run(*command,*(('up','-d') if action=='start' else ('stop',)),timeout=180)
                 return {'app':ident,'action':action,'data_preserved':action=='uninstall'}

@@ -1,6 +1,8 @@
 """Pinned official ZimaOS catalog and Harbor's Docker Compose adapter."""
 import copy
 import json
+import os
+import stat
 from pathlib import Path, PurePosixPath
 import re
 
@@ -157,3 +159,46 @@ def prepare(ident, apps, storage, uid=1000, gid=1000, options=None):
 
 def public_item(item):
     return {k:v for k,v in item.items() if k not in ('compose','detail','screenshots')}
+
+
+def compose_app_state(item, containers):
+    """Successful dependency setup jobs are not stopped application daemons."""
+    services=item.get('compose',{}).get('services',{})
+    helpers=set()
+    for service in services.values():
+        dependencies=service.get('depends_on',{})
+        if isinstance(dependencies,dict):
+            helpers.update(name for name,rule in dependencies.items() if isinstance(rule,dict) and rule.get('condition')=='service_completed_successfully')
+    runtime=[]
+    for container in containers:
+        labels=dict(field.split('=',1) for field in container.get('Labels','').split(',') if '=' in field)
+        if labels.get('com.docker.compose.oneoff','').lower()=='true':continue
+        service=labels.get('com.docker.compose.service')
+        complete=container.get('State')=='exited' and bool(re.match(r'^Exited \(0\)(?: |$)',container.get('Status','')))
+        if service in helpers and complete:continue
+        runtime.append((service,container.get('State')))
+    if not runtime:return 'stopped'
+    if any(state=='restarting' for _,state in runtime):return 'restarting'
+    if all(state=='running' for _,state in runtime) and (not item.get('main') or any(service==item['main'] for service,_ in runtime)):return 'running'
+    return 'stopped'
+
+
+def provision_app_mounts(ident, compose, apps, storage):
+    """Create managed bind directories; prepare AnythingLLM's documented UID 1000."""
+    apps_root=Path(apps).resolve();shares_root=(Path(storage)/'shares').resolve()
+    for service in compose.get('services',{}).values():
+        for volume in service.get('volumes',[]):
+            if not isinstance(volume,dict) or volume.get('type')!='bind':continue
+            source=Path(volume['source'])
+            anything_storage=ident=='anythingllm' and volume.get('target')=='/app/server/storage'
+            if anything_storage:
+                expected=apps_root/'anythingllm'/'storage'
+                if source.resolve()!=expected or source.is_symlink() or expected.parent.is_symlink():
+                    raise ValueError('AnythingLLM storage must be its dedicated app directory without symlinks.')
+            if any(source.resolve().is_relative_to(root) for root in (apps_root,shares_root)):
+                source.mkdir(parents=True,exist_ok=True)
+            if not anything_storage:continue
+            # No recursive ownership changes, shared-folder changes or world-writable modes.
+            mode=stat.S_IMODE(source.stat().st_mode)
+            os.chown(source,1000,1000)
+            os.chmod(source,mode|0o700)
