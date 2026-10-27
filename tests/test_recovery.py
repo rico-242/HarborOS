@@ -50,12 +50,14 @@ class RecoveryTests(unittest.TestCase):
 
  def test_legacy_boot_retains_zima_and_normal_harbour_policy(self):
   uuid='00000000-0000-0000-0000-000000000001'
-  original='set timeout=5\nload_env\nset default=1\nset harbor_default=1\nset harbor_once=0\nsave_env harbor_once\nmenuentry Harbour --id harbor {\n linux /harbor/rootfs/boot/harbor-vmlinuz root=UUID='+uuid+' rw harbor.subdir=harbor/rootfs\n}\nmenuentry Zima --id zima {}\n'
+  original='set timeout=5\nload_env\nset default=1\nset harbor_default=1\nset harbor_once=0\nsave_env harbor_once\nmenuentry Harbour --id harbor {\n regexp --set 1:boothd (.+),.+ ${root}\n set harborroot=${boothd},gpt8\n linux /harbor/rootfs/boot/harbor-vmlinuz root=UUID='+uuid+' rw harbor.subdir=harbor/rootfs\n}\nmenuentry Zima --id zima {}\n'
   generated=grub_configuration(original,uuid,'/harbor/rootfs',True)
   self.assertTrue(generated.startswith(original.split('menuentry ')[0]))
   self.assertIn('set harbor_default=1',generated);self.assertIn('menuentry Zima --id zima {}',generated)
   self.assertIn('findiso=/harbor/rootfs/boot/harbour-recovery/recovery.iso',generated)
   self.assertIn('save_env harbour_recovery_once',generated)
+  recovery_entry=generated.split('# HARBOUR RECOVERY START')[1]
+  self.assertNotIn('search --',recovery_entry);self.assertIn('set root=${boothd},gpt8',recovery_entry)
   self.assertEqual(generated,grub_configuration(generated,uuid,'/harbor/rootfs',True))
  def test_unsupported_subdirectory_root_is_rejected(self):
   with self.assertRaisesRegex(ValueError,'filesystem root'):grub_configuration('root=UUID=00000000-0000-0000-0000-000000000001 /boot/harbor-vmlinuz','00000000-0000-0000-0000-000000000001','/other',True)

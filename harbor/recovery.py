@@ -52,8 +52,13 @@ if [ "${next_entry}" ]; then
 else
   set default=0
 fi''',1)
+ root_command='  search --no-floppy --fs-uuid --set=root '+uuid
+ if legacy:
+  match=re.search(r'(?m)^\s*set harborroot=\$\{boothd\},gpt(\d+)\s*$',original)
+  if not match or 'regexp --set 1:boothd (.+),.+ ${root}' not in original:raise ValueError('The legacy root-disk addressing pattern is not recognized.')
+  root_command='  regexp --set 1:boothd (.+),.+ ${root}\n  set root=${boothd},gpt'+match[1]
  return original+marker+'''menuentry 'Harbour recovery — fresh installation' --id harbour-recovery {
-  search --no-floppy --fs-uuid --set=root '''+uuid+'''
+'''+root_command+'''
   linux '''+prefix+'''/boot/harbour-recovery/vmlinuz boot=live components nopersistence noeject toram findiso='''+prefix+'''/boot/harbour-recovery/recovery.iso harbour.recovery=1 quiet splash console=tty0 console=ttyS0,115200n8
   initrd '''+prefix+'''/boot/harbour-recovery/initrd.img
 }

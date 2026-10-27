@@ -52,7 +52,8 @@ def wait_connection(host,key,record,timeout=240,phase=None):
    client=recovery_connection(host,key,record['server_key'])
    if phase and agent(client,'status')['phase']!=phase:client.close();time.sleep(2);continue
    return client
-  except (OSError,paramiko.SSHException):time.sleep(2)
+  except (paramiko.BadHostKeyException,paramiko.AuthenticationException):raise RuntimeError('The NAS returned with another OS identity or rejected the recovery key. No install command was sent.') from None
+  except (OSError,paramiko.SSHException):time.sleep(15)
  raise RuntimeError('Recovery SSH did not become available. No install command was sent.')
 
 def forward_setup(client,port=17080,duration=3600):
