@@ -25,7 +25,7 @@ class ExternalDrives:
   return dict(formats=list(FORMATS),packages=PACKAGES,missing=[name for name in ('ntfs-3g','fsapfsmount') if not shutil.which(name)],note='Read-only standalone disks. APFS is experimental; encrypted disks, ZFS pools and RAID member partitions require a separate import/unlock workflow.')
  def inventory(self):
   if self.app.demo:return []
-  tree=json.loads(self.run('lsblk','-J','-b','-p','-o','PATH,SIZE,TYPE,FSTYPE,UUID,LABEL,MOUNTPOINTS,SERIAL,MODEL').stdout)['blockdevices']
+  tree=json.loads(self.run('lsblk','--tree','-J','-b','-p','-o','PATH,SIZE,TYPE,FSTYPE,UUID,LABEL,MOUNTPOINTS,SERIAL,MODEL').stdout)['blockdevices']
   result=[]
   def nodes(node):
    yield node

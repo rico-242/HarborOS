@@ -67,6 +67,15 @@ class ExternalTests(unittest.TestCase):
   self.app=SimpleNamespace(demo=True,state=self.root,config={},jobs={},lock=threading.RLock())
   self.run=Mock(return_value=SimpleNamespace(returncode=0,stdout=''))
   self.manager=ExternalDrives(self.app,self.run,Error)
+ def test_nested_partition_filesystems_detected_and_system_disk_excluded(self):
+  self.app.demo=False
+  tree=[dict(path='/dev/vda',type='disk',children=[dict(path='/dev/vda1',fstype='ext4',mountpoints=['/'])]),dict(path='/dev/vdb',type='disk',serial='USB-1',children=[dict(path='/dev/vdb1',fstype='exfat',uuid='uuid',size=1234,label='Portable',mountpoints=[])])]
+  self.run.return_value.stdout=json.dumps({'blockdevices':tree})
+  values=self.manager.inventory()
+  self.assertEqual(len(values),1)
+  self.assertEqual(values[0]['filesystem'],'exfat')
+  self.assertEqual(values[0]['serial'],'USB-1')
+  self.assertIn('--tree',self.run.call_args.args)
  def test_all_normal_mounts_are_readonly_and_nonexecutable(self):
   for fs,options in FORMATS.items():
    self.assertTrue({'ro','nosuid','nodev','noexec'}.issubset(options.split(',')),fs)

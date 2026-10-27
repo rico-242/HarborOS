@@ -1,4 +1,4 @@
-# App configuration and connected filesystems — Harbour 0.12.0
+# App configuration and connected filesystems — Harbour 0.12.1
 
 Applications and their managed configuration default to the OS drive: `/srv/harbor/apps` for app data, `/var/lib/harbor/compose` for container definitions, and Docker's normal `/var/lib/docker` for images and named volumes. The application checks that its app and configuration roots are on the OS filesystem and are not symlink redirects. Existing custom layouts on another filesystem are refused for new app installs/settings changes rather than silently moving data.
 
@@ -14,4 +14,4 @@ System disks, current pool disks, active arrays, swap and other mounted disks re
 
 Primary references: [Debian filesystem tools](https://www.debian.org/doc/manuals/debian-reference/ch09), [APFS reader](https://packages.debian.org/trixie/libfsapfs-utils), [APFS supported features](https://github.com/libyal/libfsapfs/wiki/), [APFS mounting](https://github.com/libyal/libfsapfs/wiki/Mounting).
 
-Validation includes 156 regression tests, JavaScript syntax checks, app-config rollback tests, traversal/protected-volume tests, and real read-only filesystem tests using disposable loop images for ext4, FAT, exFAT, NTFS, Btrfs, XFS and F2FS. BIOS/UEFI ISO acceptance runs those loop tests too. No physical data disks are used as test fixtures.
+Validation includes 157 regression tests, JavaScript syntax checks, app-config rollback tests, traversal/protected-volume tests, and real read-only filesystem tests using disposable loop images for ext4, FAT, exFAT, NTFS, Btrfs, XFS and F2FS. BIOS/UEFI ISO acceptance runs those loop tests too. No physical data disks are used as test fixtures.
