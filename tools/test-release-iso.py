@@ -82,7 +82,7 @@ for firmware in ('bios','uefi'):
       if status.get('exitcode')!=0:
        if 'external-readers-live-test.py' in err or 'disk-wipe-live-test.py' in err:raise AssertionError(err)
        raise RuntimeError(err or out)
-      value=json.loads(out);assert value['uefi']==(firmware=='uefi')
+      value=json.loads(out.strip().splitlines()[-1]);assert value['uefi']==(firmware=='uefi')
       results[firmware]=value;print(firmware+': '+out,flush=True);break
      except (OSError,RuntimeError,ValueError) as error:
       if str(error)!=last:print(firmware+': waiting: '+str(error),flush=True)
