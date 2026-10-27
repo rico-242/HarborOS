@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory(dir='/run',prefix='harbour-app-storage-') as di
  assert info.st_uid==1000 and info.st_gid==1000 and info.st_mode&0o700==0o700
 
 assert all(shutil.which(name) for name in ('mdadm','parted','btrfs','wipefs','xorriso','grub-reboot','grub-editenv','efibootmgr','ssh-keygen','unmkinitramfs'))
-print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists(),'disk_wipe_acceptance':True,'ai_app_storage_acceptance':True,'external_filesystem_acceptance':True}))
+print(json.dumps({'version':VERSION,'live':True,'graphical_services':True,'installer_ready':True,'fresh_owner':True,'public_update_key':True,'assets_http_200':True,'uefi':Path('/sys/firmware/efi').exists(),'disk_wipe_acceptance':True,'ai_app_storage_acceptance':True,'external_filesystem_acceptance':True,'external_write_acceptance':True}))
 '''
 script=script.replace('print(json.dumps(', "Path('/run/disk-wipe-live-test.py').write_text("+repr((root/'tools/test-disk-wipe-live.py').read_text())+")\nimport runpy\nrunpy.run_path('/run/disk-wipe-live-test.py')\nprint(json.dumps(",1)
 script=script.replace('print(json.dumps(', "Path('/run/external-readers-live-test.py').write_text("+repr((root/'tools/test-external-readers.py').read_text())+")\n__import__('os').environ['HARBOUR_EXTERNAL_LOOP_TEST']='1'\nrunpy.run_path('/run/external-readers-live-test.py')\nprint(json.dumps(",1)

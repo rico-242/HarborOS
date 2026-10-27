@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.12.1'
+VERSION = '0.13.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
@@ -985,6 +985,11 @@ class Handler(BaseHTTPRequestHandler):
         if session['role']!='owner' and route not in ('/api/logout','/api/upload','/api/folders','/api/file-action','/api/trash-restore'):
             raise APIError('This feature is available to the server owner.',403)
         self.file_volume(route,query,session)
+        if route=='/api/external-upload':
+            if self.headers.get('Transfer-Encoding') or self.headers.get_content_type()!='application/octet-stream':raise APIError('Send files as a binary upload.')
+            try:length=int(self.headers.get('Content-Length','-1'))
+            except ValueError:raise APIError('Invalid upload size.')
+            return self.reply(self.app.external_drives.upload(query.get('id',[''])[0],query.get('path',[''])[0],query.get('name',[''])[0],self.rfile,length),201)
         if route=='/api/os-updates/upload':
             if self.headers.get('Transfer-Encoding') or self.headers.get_content_type()!='application/octet-stream':raise APIError('Send a signed update bundle as a binary upload.')
             try:length=int(self.headers.get('Content-Length','-1'))
@@ -1072,6 +1077,7 @@ class Handler(BaseHTTPRequestHandler):
         if route == '/api/restore':
             return self.reply(self.app.job('Restore snapshot', lambda: self.app.restore(data.get('snapshot', ''), data.get('name', ''))), 202)
         if route == '/api/app-settings':return self.reply(self.app.app_settings.save(data),202)
+        if route == '/api/external-file-action':return self.reply(self.app.external_drives.file_action(data))
         if route == '/api/external-action':return self.reply(self.app.external_drives.action(data))
         if route == '/api/filesystem-support':return self.reply(self.app.external_drives.install_support(),202)
         if route == '/api/app-action':

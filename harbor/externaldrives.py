@@ -1,28 +1,30 @@
-"""Explicit, owner-only, read-only mounts of standalone connected filesystems."""
-import hashlib,json,os,re,shutil
+"""Explicit, owner-only, opt-in writable mounts of standalone connected filesystems."""
+import hashlib,json,os,re,shutil,threading
+from externalwrite import ExternalWrites,WRITABLE
 from pathlib import Path
 
 FORMATS={'ext2':'ro,nosuid,nodev,noexec','ext3':'ro,noload,nosuid,nodev,noexec','ext4':'ro,noload,nosuid,nodev,noexec','btrfs':'ro,nologreplay,nosuid,nodev,noexec','xfs':'ro,norecovery,nosuid,nodev,noexec','vfat':'ro,nosuid,nodev,noexec','exfat':'ro,nosuid,nodev,noexec','ntfs':'ro,norecover,nosuid,nodev,noexec','hfs':'ro,nosuid,nodev,noexec','hfsplus':'ro,nosuid,nodev,noexec','f2fs':'ro,norecovery,nosuid,nodev,noexec','udf':'ro,nosuid,nodev,noexec','iso9660':'ro,nosuid,nodev,noexec','apfs':'ro,nosuid,nodev,noexec'}
 PACKAGES=['ntfs-3g','exfatprogs','xfsprogs','f2fs-tools','udftools','hfsplus','libfsapfs-utils']
 
-class ExternalDrives:
+class ExternalDrives(ExternalWrites):
  def __init__(self,app,run,error):
   self.app,self.run,self.error=app,run,error
   self.root=Path('/run/harbor/external') if not app.demo else app.state/'external'
   self.mounted={}
+  self.io_lock=threading.RLock()
   self.record=app.state/'external-mounts.json'
   if self.record.exists():
    try:
     saved=json.loads(self.record.read_text())
     for key,value in saved.items():
      if re.fullmatch(r'[a-f0-9]{24}',key) and isinstance(value,dict) and str(value.get('device','')).startswith('/dev/disk/by-id/'):
-      self.mounted[key]=dict(value,mount=self.root/key)
+      self.mounted[key]=dict(value,id=key,mount=self.root/key)
    except (ValueError,OSError,AttributeError):pass
  def save(self):
   from server import atomic_json
   atomic_json(self.record,{key:{k:v for k,v in value.items() if k!='mount'} for key,value in self.mounted.items()})
  def support(self):
-  return dict(formats=list(FORMATS),packages=PACKAGES,missing=[name for name in ('ntfs-3g','fsapfsmount') if not shutil.which(name)],note='Read-only standalone disks. APFS is experimental; encrypted disks, ZFS pools and RAID member partitions require a separate import/unlock workflow.')
+  return dict(formats=list(FORMATS),writable_formats=sorted(WRITABLE),packages=PACKAGES,missing=[name for name in ('ntfs-3g','fsapfsmount') if not shutil.which(name)],note='Standalone disks open read-only; writing is opt-in for supported formats. APFS/HFS/HFS+ stay read-only. APFS is experimental; encrypted disks, ZFS pools and RAID member partitions require a separate import/unlock workflow.')
  def inventory(self):
   if self.app.demo:return []
   tree=json.loads(self.run('lsblk','--tree','-J','-b','-p','-o','PATH,SIZE,TYPE,FSTYPE,UUID,LABEL,MOUNTPOINTS,SERIAL,MODEL').stdout)['blockdevices']
@@ -45,15 +47,17 @@ class ExternalDrives:
     own=bool(entry and self.is_mounted(entry))
     busy=any(m and (not own or m!=str(entry['mount'])) for n in family for m in (n.get('mountpoints') or []))
     reason='Current data-pool disk' if str(Path(disk['path']).resolve()) in recorded else 'Disk is mounted or belongs to an active array' if held or busy else 'No stable disk identity' if not stable else 'Filesystem needs an import/unlock workflow' if fs not in FORMATS else ''
-    result.append(dict(id=key,device=stable,path=node['path'],serial=disk.get('serial') or '',model=disk.get('model') or '',filesystem=fs,uuid=node.get('uuid'),label=node.get('label') or '',size=node['size'],eligible=not reason,reason=reason,mounted=own))
+    result.append(dict(id=key,device=stable,path=node['path'],serial=disk.get('serial') or '',model=disk.get('model') or '',filesystem=fs,uuid=node.get('uuid'),label=node.get('label') or '',size=node['size'],eligible=not reason,reason=reason,mounted=own,writable=bool(own and entry.get('writable')),write_supported=fs in WRITABLE,write_confirmation=self.write_confirmation(dict(id=key,serial=disk.get('serial'),uuid=node.get('uuid')))))
   return result
  def is_mounted(self,entry):
   result=self.run('findmnt','-J','--mountpoint',str(entry['mount']),'-o','SOURCE,FSTYPE,OPTIONS',check=False)
   if result.returncode:return False
   fs=json.loads(result.stdout)['filesystems'][0]
   source=fs['source'].split('[')[0]
-  return 'ro' in fs['options'].split(',') and (str(Path(source).resolve())==str(Path(entry['device']).resolve()) or entry['filesystem']=='apfs' and fs['fstype'].startswith('fuse'))
+  return {'rw' if entry.get('writable') else 'ro','nosuid','nodev','noexec'}.issubset(fs['options'].split(',')) and (str(Path(source).resolve())==str(Path(entry['device']).resolve()) or entry['filesystem']=='apfs' and fs['fstype'].startswith('fuse'))
  def action(self,data):
+  with self.io_lock:return self._action(data)
+ def _action(self,data):
   with self.app.lock:
    if any(j.get('kind')=='storage' and j.get('state') in ('queued','running') for j in self.app.jobs.values()):raise self.error('Wait for the storage operation to finish.',409)
    ident=data.get('id');entry=self.mounted.get(ident)
@@ -64,7 +68,18 @@ class ExternalDrives:
    if data.get('action')!='mount':raise self.error('Choose mount or unmount.')
    disk=next((d for d in self.inventory() if d['id']==ident),None)
    if not disk or not disk['eligible']:raise self.error('Choose an unused supported disk. '+(disk or {}).get('reason',''),409)
-   if disk['mounted']:return dict(mounted=True,id=ident)
+   mode=data.get('mode','ro')
+   if mode not in ('ro','rw'):raise self.error('Choose read-only or read/write mode.')
+   writable=mode=='rw'
+   if writable:
+    if disk['filesystem'] not in WRITABLE:raise self.error('This filesystem supports read-only access in Harbour.',409)
+    if data.get('acknowledge') is not True or data.get('confirmation')!=self.write_confirmation(disk):raise self.error('Confirm writing using '+self.write_confirmation(disk)+'.')
+   if disk['mounted']:
+    if bool(entry.get('writable'))==writable:return dict(mounted=True,id=ident,writable=writable)
+    self.run('umount',str(entry['mount']),timeout=30);self.mounted.pop(ident,None);self.save()
+    disk=next((d for d in self.inventory() if d['id']==ident),None)
+    if not disk or not disk['eligible']:raise self.error('Drive state changed after unmount. Refresh and review.',409)
+
    self.root.mkdir(parents=True,exist_ok=True,mode=0o700)
    if any(p.is_symlink() for p in (self.root,*self.root.parents)):raise self.error('External mount location is redirected.',409)
    target=self.root/ident;target.mkdir(exist_ok=True,mode=0o700)
@@ -76,17 +91,25 @@ class ExternalDrives:
    if fs=='btrfs':
     show=self.run('btrfs','filesystem','show','--raw',disk['device'],check=False).stdout
     if not re.search(r'Total devices\s+1\b',show):raise self.error('Multi-device Btrfs needs a separate pool import.',409)
-   if fs=='apfs':
-    volume=data.get('apfs_volume',1)
-    if not isinstance(volume,int) or not 1<=volume<=128:raise self.error('Choose APFS volume 1–128.')
-    self.run('fsapfsmount','-f',str(volume),'-X','ro,nosuid,nodev,noexec',disk['device'],str(target),timeout=30)
-   else:self.run('mount','-t','ntfs-3g' if fs=='ntfs' else fs,'-o',FORMATS[fs],disk['device'],str(target),timeout=30)
-   entry=dict(disk,mount=target);self.mounted[ident]=entry
-   if not self.is_mounted(entry):
-    self.run('umount',str(target),check=False);self.mounted.pop(ident,None)
-    raise self.error('Could not verify a read-only mount.',409)
-   self.save()
-   return dict(mounted=True,id=ident)
+   try:
+    if fs=='apfs':
+     volume=data.get('apfs_volume',1)
+     if not isinstance(volume,int) or not 1<=volume<=128:raise self.error('Choose APFS volume 1–128.')
+     self.run('fsapfsmount','-f',str(volume),'-X','ro,nosuid,nodev,noexec',disk['device'],str(target),timeout=30)
+    else:
+     options=('rw,nosuid,nodev,noexec'+(',norecover' if fs=='ntfs' else '')) if writable else FORMATS[fs]
+     self.run('mount','-t','ntfs-3g' if fs=='ntfs' else fs,'-o',options,disk['device'],str(target),timeout=30)
+    entry=dict(disk,mount=target,writable=writable);self.mounted[ident]=entry
+    if not self.is_mounted(entry):raise self.error('Could not verify the requested mount mode.',409)
+    self.save()
+    return dict(mounted=True,id=ident,writable=writable)
+   except Exception:
+    if target.is_mount():self.run('umount',str(target),check=False)
+    self.mounted.pop(ident,None);self.save()
+    if writable:
+     try:self._action(dict(action='mount',id=ident,mode='ro'))
+     except Exception:pass
+    raise
  def path(self,ident,relative):
   entry=self.mounted.get(ident)
   if not entry or not self.is_mounted(entry):raise self.error('Mount this external disk first.',409)
@@ -104,12 +127,13 @@ class ExternalDrives:
   if not path.is_dir():raise self.error('Choose a folder.')
   entries=[]
   for p in sorted(path.iterdir(),key=lambda p:(not p.is_dir(),p.name.lower())):
-   if p.is_symlink():continue
+   if p.is_symlink() or p.name.startswith('.harbour-upload-'):continue
    stat=p.stat()
    if not p.is_dir() and not p.is_file():continue
    entries.append(dict(name=p.name,directory=p.is_dir(),size=stat.st_size))
    if len(entries)>=2000:break
-  return dict(path=relative,entries=entries,readonly=True)
+  entry=self.mounted[ident]
+  return dict(path=relative,entries=entries,readonly=not entry.get('writable',False),write_supported=entry['filesystem'] in WRITABLE,write_confirmation=self.write_confirmation(dict(entry,id=ident)))
  def install_support(self):
   if self.app.demo:raise self.error('Install filesystem support on the appliance.',409)
   def execute():
