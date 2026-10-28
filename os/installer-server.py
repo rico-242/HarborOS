@@ -20,7 +20,7 @@ WEB=Path('/opt/harbor/web')
 class Installer:
     def __init__(self,demo=False):
         self.demo=demo;self.sessions={};self.plans={};self.lock=threading.RLock()
-        self.status={'phase':'ready','stage':'Choose a disk','log':[],'version':'0.13.0','demo':demo}
+        self.status={'phase':'ready','stage':'Choose a disk','log':[],'version':'0.14.0','demo':demo}
         self.logs=deque(maxlen=40)
         if not demo:
             if 'boot=live' not in Path('/proc/cmdline').read_text().split():raise RuntimeError('The installer runs only from the live medium.')
@@ -125,3 +125,4 @@ if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--demo',action='store_true');parser.add_argument('--port',type=int,default=17081);args=parser.parse_args()
     if args.demo:WEB=Path(__file__).resolve().parents[1]/'harbor/web'
     server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler);server.app=Installer(args.demo);server.serve_forever()
+

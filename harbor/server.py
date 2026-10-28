@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.13.0'
+VERSION = '0.14.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
@@ -36,6 +36,7 @@ from storage import StorageManager, LEVELS
 from fileops import FileOperations,filename,transfer
 from members import Members
 from systemsettings import SystemSettings
+from virtualization import Virtualization
 from networking import Networking
 from releases import Releases
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$')
@@ -146,6 +147,7 @@ class Harbor:
         self.file_operations = FileOperations(self,contained_path,APIError,atomic_json)
         self.members = Members(self,run,APIError,password_record,atomic_json)
         self.system_settings=SystemSettings(self,run,APIError,atomic_json)
+        self.virtualization=Virtualization(self,run,APIError)
         self.networking=Networking(self,run,APIError,atomic_json)
         self.releases=Releases(self,run,APIError,atomic_json,VERSION)
         from recovery import Recovery
@@ -1080,6 +1082,8 @@ class Handler(BaseHTTPRequestHandler):
         if route == '/api/external-file-action':return self.reply(self.app.external_drives.file_action(data))
         if route == '/api/external-action':return self.reply(self.app.external_drives.action(data))
         if route == '/api/filesystem-support':return self.reply(self.app.external_drives.install_support(),202)
+        if route == '/api/virtualization': return self.reply(self.app.virtualization.status())
+        if route == '/api/virtualization-install': return self.reply(self.app.virtualization.install(),202)
         if route == '/api/app-action':
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':
@@ -1167,3 +1171,4 @@ if __name__ == '__main__':
     finally:
         server.server_close()
         app.pool.shutdown(wait=False, cancel_futures=True)
+
