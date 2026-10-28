@@ -37,6 +37,7 @@ from fileops import FileOperations,filename,transfer
 from members import Members
 from systemsettings import SystemSettings
 from virtualization import Virtualization
+from vms import VirtualMachines
 from networking import Networking
 from releases import Releases
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$')
@@ -148,6 +149,7 @@ class Harbor:
         self.members = Members(self,run,APIError,password_record,atomic_json)
         self.system_settings=SystemSettings(self,run,APIError,atomic_json)
         self.virtualization=Virtualization(self,run,APIError)
+        self.virtual_machines=VirtualMachines(self,APIError)
         self.networking=Networking(self,run,APIError,atomic_json)
         self.releases=Releases(self,run,APIError,atomic_json,VERSION)
         from recovery import Recovery
@@ -1083,7 +1085,9 @@ class Handler(BaseHTTPRequestHandler):
         if route == '/api/external-action':return self.reply(self.app.external_drives.action(data))
         if route == '/api/filesystem-support':return self.reply(self.app.external_drives.install_support(),202)
         if route == '/api/virtualization': return self.reply(self.app.virtualization.status())
+        if route == '/api/vms': return self.reply(self.app.virtual_machines.info())
         if route == '/api/virtualization-install': return self.reply(self.app.virtualization.install(),202)
+        if route == '/api/vm-action': return self.reply(self.app.virtual_machines.action(data))
         if route == '/api/app-action':
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':
