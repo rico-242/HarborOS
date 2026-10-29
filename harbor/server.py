@@ -871,6 +871,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(self.app.app_list())
             if route == '/api/vms':
                 return self.reply(self.app.virtual_machines.info())
+            if route == '/api/virtualization':
+                return self.reply(self.app.virtualization.status())
             if route == '/api/catalog':
                 return self.reply({k:v for k,v in CATALOG_INFO.items() if k!='apps'})
             if route == '/api/storage/expansion':
