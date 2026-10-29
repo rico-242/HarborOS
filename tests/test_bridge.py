@@ -12,10 +12,10 @@ class LegacyBridgeTests(unittest.TestCase):
         source=(Path(__file__).parents[1]/'harbor/server.py').read_text(encoding='utf-8')
         result=bridge.baseline_source(source)
         self.assertIn("VERSION = '0.3.1'",result)
-        self.assertEqual(result.replace("VERSION = '0.3.1'","VERSION = '0.16.0'"),source)
+        self.assertEqual(result.replace("VERSION = '0.3.1'","VERSION = '0.17.0'"),source)
 
     def test_missing_duplicate_or_dynamic_version_cannot_be_bootstrapped(self):
-        for source in ('print("no version")',"VERSION = '0.16.0'\nVERSION = '0.4.1'\n",'VERSION = read_version()'):
+        for source in ('print("no version")',"VERSION = '0.17.0'\nVERSION = '0.4.1'\n",'VERSION = read_version()'):
             with self.subTest(source=source),self.assertRaises(ValueError):bridge.baseline_source(source)
 
 

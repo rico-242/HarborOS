@@ -28,7 +28,7 @@ import time
 import zipfile
 from urllib.parse import parse_qs, unquote, urlsplit
 
-VERSION = '0.16.0'
+VERSION = '0.17.0'
 WEB = Path(__file__).parent / 'web'
 sys.path.insert(0, str(Path(__file__).parent))
 from appstore import CATALOG_INFO, OFFICIAL, prepare as prepare_app, public_item, project_name, compose_app_state, provision_app_mounts
@@ -37,7 +37,8 @@ from fileops import FileOperations,filename,transfer
 from members import Members
 from systemsettings import SystemSettings
 from virtualization import Virtualization
-from vms import VirtualMachines
+from vms import VirtualMachines, ISO_ROOT
+from vmconsole import bridge as vm_console_bridge
 from networking import Networking
 from releases import Releases
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$')
@@ -810,6 +811,15 @@ class Handler(BaseHTTPRequestHandler):
             if session['role']!='owner' and route not in ('/api/summary','/api/files','/api/shares','/api/download','/api/archive','/api/preview','/api/image','/api/apps','/api/catalog','/api/trash','/api/jobs'):
                 raise APIError('This feature is available to the server owner.',403)
             self.file_volume(route,query,session)
+            if route == '/api/vm-console':
+                origin=('https' if self.server.tls else 'http')+'://'+self.headers.get('Host','')
+                if self.headers.get('Origin')!=origin or self.headers.get('Upgrade','').lower()!='websocket' or self.headers.get('Sec-WebSocket-Version')!='13':
+                    raise APIError('Open the console from your signed-in Harbour page.',403)
+                address=self.app.virtual_machines.console_address(query.get('name',[''])[0])
+                def valid():
+                    try:self.session();return True
+                    except APIError:return False
+                return vm_console_bridge(self,address,valid)
             if route == '/api/app-settings':return self.reply(self.app.app_settings.info(query.get('id',[''])[0],query.get('path',[None])[0]))
             if route == '/api/app-location':return self.reply(self.app.app_settings.system_location())
             if route == '/api/external-drives':return self.reply(dict(disks=self.app.external_drives.inventory(),support=self.app.external_drives.support()))
@@ -934,7 +944,13 @@ class Handler(BaseHTTPRequestHandler):
         static['/recovery.js']='recovery.js'
         static.update({'/process.js':'process.js','/widgets.js':'widgets.js','/refinements.css':'refinements.css'})
         static.update({'/maintenance.js':'maintenance.js','/maintenance.css':'maintenance.css','/theme.js':'theme.js','/experience.js':'experience.js','/experience.css':'experience.css','/wallpaper.svg':'wallpaper.svg'})
-        if route.startswith('/catalog/icons/'):
+        if route.startswith('/vendor/novnc/'):
+            relative=unquote(route.removeprefix('/vendor/novnc/'))
+            root=(WEB/'vendor/novnc').resolve();path=(root/relative).resolve()
+            if not path.is_relative_to(root) or not path.is_file() or path.suffix not in ('.js','.json'):raise APIError('Asset not found.',404)
+        elif route in ('/vm-console.html','/vm-console.js','/vm-console.css'):
+            path=WEB/route[1:]
+        elif route.startswith('/catalog/icons/'):
             name=route.removeprefix('/catalog/icons/')
             if not re.fullmatch(r'[a-z0-9][a-z0-9_.-]{0,70}\.(svg|png|jpg|jpeg|webp|gif)',name):
                 raise APIError('Icon not found.',404)
@@ -993,6 +1009,27 @@ class Handler(BaseHTTPRequestHandler):
         if session['role']!='owner' and route not in ('/api/logout','/api/upload','/api/folders','/api/file-action','/api/trash-restore'):
             raise APIError('This feature is available to the server owner.',403)
         self.file_volume(route,query,session)
+        if route=='/api/vm-iso':
+            name=query.get('name',[''])[0]
+            if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,150}\.iso',name):raise APIError('Choose an ISO with a simple filename.')
+            try:length=int(self.headers.get('Content-Length','-1'))
+            except ValueError:raise APIError('Invalid upload length.')
+            if not 1<=length<=16*1024**3 or self.headers.get('Transfer-Encoding'):raise APIError('Choose an ISO smaller than 16 GiB.')
+            root=ISO_ROOT;root.mkdir(parents=True,exist_ok=True);root.chmod(0o755)
+            target=root/name
+            try:
+                with target.open('xb') as output:
+                    remaining=length
+                    while remaining:
+                        chunk=self.rfile.read(min(1024*1024,remaining))
+                        if not chunk:raise APIError('ISO upload was interrupted.')
+                        output.write(chunk);remaining-=len(chunk)
+                target.chmod(0o644)
+            except FileExistsError:raise APIError('An ISO with that name already exists.',409)
+            except Exception:
+                target.unlink(missing_ok=True)
+                raise
+            return self.reply({'name':name},201)
         if route=='/api/external-upload':
             if self.headers.get('Transfer-Encoding') or self.headers.get_content_type()!='application/octet-stream':raise APIError('Send files as a binary upload.')
             try:length=int(self.headers.get('Content-Length','-1'))
@@ -1092,6 +1129,7 @@ class Handler(BaseHTTPRequestHandler):
         if route == '/api/vms': return self.reply(self.app.virtual_machines.info())
         if route == '/api/virtualization-install': return self.reply(self.app.virtualization.install(),202)
         if route == '/api/vm-action': return self.reply(self.app.virtual_machines.action(data))
+        if route == '/api/vm-create': return self.reply(self.app.virtual_machines.create(data),202)
         if route == '/api/app-action':
             return self.reply(self.app.app_action(data.get('id', ''), data.get('action', ''),data.get('options')), 202)
         if route == '/api/app-plan':

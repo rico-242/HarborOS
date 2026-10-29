@@ -2,7 +2,7 @@
 import json, os, re, shutil, subprocess
 from pathlib import Path
 
-PACKAGES = ('qemu-system-x86', 'qemu-utils', 'libvirt-daemon-system', 'libvirt-clients', 'virtinst')
+PACKAGES = ('qemu-system-x86', 'qemu-utils', 'libvirt-daemon-system', 'libvirt-daemon-config-network', 'libvirt-clients', 'virtinst', 'dnsmasq-base')
 
 class Virtualization:
     def __init__(self, app, run, error):
@@ -19,7 +19,7 @@ class Virtualization:
             p = subprocess.run(['systemctl','is-active',unit], capture_output=True, text=True)
             services[unit] = p.stdout.strip() == 'active'
         socket = Path('/var/run/libvirt/libvirt-sock').exists()
-        ready = kvm.exists() and tools['virsh'] and tools['qemu-system-x86_64'] and socket and any(services.values())
+        ready = kvm.exists() and all(tools.values()) and socket and any(services.values())
         return {'ready': ready, 'kvm': kvm.exists(), 'tools': tools, 'services': services,
                 'libvirt_socket': socket, 'packages': list(PACKAGES),
                 'message': 'Virtualization support is ready.' if ready else 'Install Virtualization Support to enable QEMU/KVM and libvirt.'}

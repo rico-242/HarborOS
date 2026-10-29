@@ -11,7 +11,7 @@ class FakeApp:
 
 class VirtualizationTests(unittest.TestCase):
     def test_package_allowlist(self):
-        self.assertEqual(PACKAGES, ('qemu-system-x86','qemu-utils','libvirt-daemon-system','libvirt-clients','virtinst'))
+        self.assertEqual(PACKAGES, ('qemu-system-x86','qemu-utils','libvirt-daemon-system','libvirt-daemon-config-network','libvirt-clients','virtinst','dnsmasq-base'))
     def test_status_shape(self):
         with patch('virtualization.subprocess.run', return_value=type('P',(),{'stdout':'inactive'})()):
             state=Virtualization(FakeApp(),None,ValueError).status()
